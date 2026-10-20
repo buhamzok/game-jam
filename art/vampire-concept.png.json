@@ -1,0 +1,12 @@
+{
+  "generationId": "c0d2457f-4d58-4282-89bb-ff4e1ebee649",
+  "prompt": "3D game character render of a suave vampire hero, stylized chunky low-poly mobile game art style, big head and short sturdy body, standing upright in a T-pose facing directly at the camera, both arms stretched straight out to the sides, legs slightly apart, crimson red cape with high collar, pale grey skin, sharp widow\u0027s peak black hair, glowing crimson eyes, small fangs, clawed hands, black suit with red vest, full body visible from head to feet, plain white background, soft even lighting, centered",
+  "model": "gemini-3.1-flash-image-preview",
+  "seed": 1786971388,
+  "imageUrl": "https://storage.googleapis.com/venus-app-a037a.firebasestorage.app/h5-imagegen/Zo8tRIGBpGhAGb0XCXoI/vNQnJFWZGxTGvS6jgw1aHkWKhbA3/e62f3ba0-55d2-47bd-87c5-4a1f7c1e7fb7.png",
+  "requestPrompt": "3D game character render of a suave vampire hero, stylized chunky low-poly mobile game art style, big head and short sturdy body, standing upright in a T-pose facing directly at the camera, both arms stretched straight out to the sides, legs slightly apart, crimson red cape with high collar, pale grey skin, sharp widow\u0027s peak black hair, glowing crimson eyes, small fangs, clawed hands, black suit with red vest, full body visible from head to feet, plain white background, soft even lighting, centered",
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "outputPath": "art/vampire-concept.png",
+  "status": "saved",
+  "sha256": "ab92d98bd3486b7aa06c069e9809cdb79b58ba5a8008e867c8d84932498188f2"
+}

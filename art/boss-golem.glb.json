@@ -1,0 +1,12 @@
+{
+  "generationId": "31ca562d-8c6c-4485-95a6-5b2e37bd7dc3",
+  "provider": "meshy",
+  "mode": "image-to-3d",
+  "quality": "standard",
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "outputPath": "art\\boss-golem.glb",
+  "status": "saved",
+  "sha256": "0919fed64a49cd264611dcb8e9c8e50982d6dd2218b9a5a6ad4dd945783a3767",
+  "modelUrl": "https://storage.googleapis.com/venus-app-a037a.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/31ca562d-8c6c-4485-95a6-5b2e37bd7dc3/model.compressed.glb",
+  "seed": 1533118781
+}

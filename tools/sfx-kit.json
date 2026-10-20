@@ -1,0 +1,740 @@
+{
+  "about": "Sound kit: every game sound event, its candidate files (paths under art/sound-sources/, all CC0) and the picks the game uses (round robin). Edit picks here or in the sound board (http://localhost:5173/tools/sound-board.html), then run python -I tools/build-sfx.py.",
+  "events": {
+    "swingClaw": {
+      "desc": "Werewolf claw swing. Starts before the hit so its whoosh peaks on the hit frame.",
+      "bus": "player",
+      "gain": -6,
+      "rate": [
+        0.94,
+        1.08
+      ],
+      "gap": 0.04,
+      "candidates": {
+        "rpg-swing": "oga/rpg_sound_pack/RPG Sound Pack/battle/swing.wav",
+        "rpg-swing2": "oga/rpg_sound_pack/RPG Sound Pack/battle/swing2.wav",
+        "rpg-swing3": "oga/rpg_sound_pack/RPG Sound Pack/battle/swing3.wav",
+        "fs-9509": "freesound/swing/9509.mp3",
+        "swosh-11": "oga/swoshes/swosh-11.flac"
+      },
+      "pick": [
+        "rpg-swing",
+        "rpg-swing2",
+        "rpg-swing3",
+        "swosh-11"
+      ]
+    },
+    "swingBlade": {
+      "desc": "Vampire blade swing (slashes).",
+      "bus": "player",
+      "gain": -7,
+      "rate": [
+        0.95,
+        1.08
+      ],
+      "gap": 0.04,
+      "candidates": {
+        "fs-442903": "freesound/slash/442903.mp3",
+        "fs-868049": "freesound/slash/868049.mp3",
+        "fs-370204": "freesound/slash/370204.mp3",
+        "rpg-swing2": "oga/rpg_sound_pack/RPG Sound Pack/battle/swing2.wav"
+      },
+      "pick": [
+        "fs-442903",
+        "fs-868049"
+      ]
+    },
+    "swingHeavy": {
+      "desc": "Stitched heavy swing: lower, slower air.",
+      "bus": "player",
+      "gain": -5,
+      "rate": [
+        0.85,
+        0.95
+      ],
+      "gap": 0.04,
+      "candidates": {
+        "swosh-06": "oga/swoshes/swosh-06.flac",
+        "swosh-09": "oga/swoshes/swosh-09.flac",
+        "swosh-01": "oga/swoshes/swosh-01.flac",
+        "fs-719637": "freesound/swing/719637.mp3"
+      },
+      "pick": [
+        "swosh-06",
+        "swosh-09",
+        "swosh-01"
+      ]
+    },
+    "hit": {
+      "desc": "Monster strike lands on a hunter: crack plus body.",
+      "bus": "player",
+      "gain": -3,
+      "rate": [
+        0.92,
+        1.08
+      ],
+      "gap": 0.03,
+      "candidates": {
+        "bank-28": "oga/independent_nu_ljudbank-hits_and_punches/hits/hit28.mp3.flac",
+        "bank-29": "oga/independent_nu_ljudbank-hits_and_punches/hits/hit29.mp3.flac",
+        "bank-26": "oga/independent_nu_ljudbank-hits_and_punches/hits/hit26.mp3.flac",
+        "bank-32": "oga/independent_nu_ljudbank-hits_and_punches/hits/hit32.mp3.flac",
+        "bank-10": "oga/independent_nu_ljudbank-hits_and_punches/hits/hit10.mp3.flac",
+        "fs-464492": "freesound/punch/464492.mp3"
+      },
+      "pick": [
+        "bank-28",
+        "bank-29",
+        "bank-26",
+        "bank-32"
+      ]
+    },
+    "hitHeavy": {
+      "desc": "Low body layer under finishers, counters and specials.",
+      "bus": "player",
+      "gain": -4,
+      "rate": [
+        0.9,
+        1
+      ],
+      "gap": 0.05,
+      "candidates": {
+        "k-punch-heavy-2": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_002.ogg",
+        "k-punch-heavy-1": "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_001.ogg",
+        "bank-02": "oga/independent_nu_ljudbank-hits_and_punches/hits/hit02.mp3.flac",
+        "fs-490769": "freesound/punch/490769.mp3"
+      },
+      "pick": [
+        "k-punch-heavy-2",
+        "k-punch-heavy-1",
+        "bank-02"
+      ]
+    },
+    "dodge": {
+      "desc": "Dodge dash.",
+      "bus": "player",
+      "gain": -10,
+      "rate": [
+        0.95,
+        1.1
+      ],
+      "gap": 0.05,
+      "candidates": {
+        "swosh-22": "oga/swoshes/swosh-22.flac",
+        "swosh-08": "oga/swoshes/swosh-08.flac",
+        "swosh-12": "oga/swoshes/swosh-12.flac",
+        "rpg-cloth-heavy": "oga/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav"
+      },
+      "pick": [
+        "swosh-22",
+        "swosh-08"
+      ]
+    },
+    "block": {
+      "desc": "Held guard absorbs a hit.",
+      "bus": "player",
+      "gain": -6,
+      "rate": [
+        0.95,
+        1.05
+      ],
+      "gap": 0.05,
+      "candidates": {
+        "fs-641895": "freesound/block/641895.mp3",
+        "fs-641896": "freesound/block/641896.mp3",
+        "k-metal-med-0": "kenney/kenney_impact-sounds/Audio/impactMetal_medium_000.ogg",
+        "fs-842171": "freesound/block/842171.mp3"
+      },
+      "pick": [
+        "fs-641895",
+        "fs-641896"
+      ]
+    },
+    "guardBreak": {
+      "desc": "The 5th blocked hit breaks the guard.",
+      "bus": "player",
+      "gain": -3,
+      "candidates": {
+        "fs-56262": "freesound/guardbreak/56262.mp3",
+        "k-glass-heavy-1": "kenney/kenney_impact-sounds/Audio/impactGlass_heavy_001.ogg",
+        "fs-427788": "freesound/guardbreak/427788.mp3"
+      },
+      "pick": [
+        "fs-56262"
+      ]
+    },
+    "parry": {
+      "desc": "Parry: metal clang under a counter, and a deflected bolt.",
+      "bus": "player",
+      "gain": -5,
+      "rate": [
+        0.97,
+        1.03
+      ],
+      "candidates": {
+        "fs-842171": "freesound/block/842171.mp3",
+        "k-metal-med-1": "kenney/kenney_impact-sounds/Audio/impactMetal_medium_001.ogg",
+        "fs-406562": "freesound/block/406562.mp3"
+      },
+      "pick": [
+        "fs-842171"
+      ]
+    },
+    "witching": {
+      "desc": "Perfect dodge: time slows (Witching Hour).",
+      "bus": "player",
+      "gain": -8,
+      "maxLen": 1.6,
+      "candidates": {
+        "fs-742835": "freesound/witching/742835.mp3",
+        "fs-715070": "freesound/witching/715070.mp3"
+      },
+      "pick": [
+        "fs-742835"
+      ]
+    },
+    "wolfHurt": {
+      "desc": "Werewolf takes a hit.",
+      "bus": "player",
+      "gain": -7,
+      "rate": [
+        0.92,
+        1.05
+      ],
+      "gap": 0.15,
+      "candidates": {
+        "mnstr1": "oga/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr1.wav",
+        "mnstr12": "oga/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr12.wav",
+        "mnstr15": "oga/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr15.wav",
+        "mnstr3": "oga/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr3.wav"
+      },
+      "pick": [
+        "mnstr1",
+        "mnstr12",
+        "mnstr15"
+      ]
+    },
+    "vampHurt": {
+      "desc": "Vampire takes a hit.",
+      "bus": "player",
+      "gain": -7,
+      "rate": [
+        0.95,
+        1.08
+      ],
+      "gap": 0.15,
+      "candidates": {
+        "shade1": "oga/rpg_sound_pack/RPG Sound Pack/NPC/shade/shade1.wav",
+        "shade14": "oga/rpg_sound_pack/RPG Sound Pack/NPC/shade/shade14.wav",
+        "shade3": "oga/rpg_sound_pack/RPG Sound Pack/NPC/shade/shade3.wav"
+      },
+      "pick": [
+        "shade1",
+        "shade14",
+        "shade3"
+      ]
+    },
+    "stitchHurt": {
+      "desc": "Stitched takes a hit.",
+      "bus": "player",
+      "gain": -6,
+      "rate": [
+        0.9,
+        1
+      ],
+      "gap": 0.15,
+      "candidates": {
+        "giant1": "oga/rpg_sound_pack/RPG Sound Pack/NPC/giant/giant1.wav",
+        "giant3": "oga/rpg_sound_pack/RPG Sound Pack/NPC/giant/giant3.wav",
+        "ogre5": "oga/rpg_sound_pack/RPG Sound Pack/NPC/ogre/ogre5.wav",
+        "ogre1": "oga/rpg_sound_pack/RPG Sound Pack/NPC/ogre/ogre1.wav"
+      },
+      "pick": [
+        "giant1",
+        "giant3",
+        "ogre5"
+      ]
+    },
+    "monsterDown": {
+      "desc": "A monster falls (the next one tags in).",
+      "bus": "player",
+      "gain": -4,
+      "candidates": {
+        "mnstr14": "oga/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr14.wav",
+        "shade8": "oga/rpg_sound_pack/RPG Sound Pack/NPC/shade/shade8.wav",
+        "giant2": "oga/rpg_sound_pack/RPG Sound Pack/NPC/giant/giant2.wav"
+      },
+      "pick": [
+        "mnstr14",
+        "giant2"
+      ]
+    },
+    "wolfTransform": {
+      "desc": "Full Moon: the wolf howls.",
+      "bus": "voice",
+      "gain": -4,
+      "maxLen": 2.8,
+      "candidates": {
+        "fs-472402": "freesound/howl/472402.mp3",
+        "fs-203342": "freesound/howl/203342.mp3",
+        "fs-427694": "freesound/howl/427694.mp3",
+        "fs-399186": "freesound/howl/399186.mp3"
+      },
+      "pick": [
+        "fs-427694"
+      ]
+    },
+    "vampTransform": {
+      "desc": "Night Swarm: shriek and a burst of wings.",
+      "bus": "voice",
+      "gain": -5,
+      "maxLen": 2.2,
+      "candidates": {
+        "shade12": "oga/rpg_sound_pack/RPG Sound Pack/NPC/shade/shade12.wav",
+        "fs-483823": "freesound/hiss/483823.mp3",
+        "fs-867961": "freesound/hiss/867961.mp3",
+        "fs-807383": "freesound/hiss/807383.mp3"
+      },
+      "pick": [
+        "fs-867961"
+      ]
+    },
+    "stitchTransform": {
+      "desc": "Red Overcharge: roar.",
+      "bus": "voice",
+      "gain": -4,
+      "maxLen": 2.4,
+      "candidates": {
+        "fs-354182": "freesound/roar/354182.mp3",
+        "fs-532155": "freesound/roar/532155.mp3",
+        "giant2": "oga/rpg_sound_pack/RPG Sound Pack/NPC/giant/giant2.wav"
+      },
+      "pick": [
+        "fs-532155"
+      ]
+    },
+    "wings": {
+      "desc": "Bat wings: Swarm Slam launch, Night Swarm start, Crimson Rain.",
+      "bus": "player",
+      "gain": -6,
+      "maxLen": 1.4,
+      "rate": [
+        0.95,
+        1.1
+      ],
+      "gap": 0.2,
+      "candidates": {
+        "fs-386706": "freesound/bats/386706.mp3",
+        "fs-389634": "freesound/bats/389634.mp3",
+        "fs-389633": "freesound/bats/389633.mp3"
+      },
+      "pick": [
+        "fs-389634"
+      ]
+    },
+    "growl": {
+      "desc": "Werewolf Moon Pounce launch.",
+      "bus": "player",
+      "gain": -5,
+      "rate": [
+        0.95,
+        1.05
+      ],
+      "candidates": {
+        "fs-360545": "freesound/growl/360545.mp3",
+        "mnstr10": "oga/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr10.wav",
+        "mnstr7": "oga/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr7.wav"
+      },
+      "pick": [
+        "fs-360545"
+      ]
+    },
+    "smash": {
+      "desc": "Stitched Thunder Smash impact: rubble.",
+      "bus": "player",
+      "gain": -2,
+      "candidates": {
+        "fs-569510": "freesound/smash/569510.mp3",
+        "fs-385938": "freesound/smash/385938.mp3",
+        "k-mining-0": "kenney/kenney_impact-sounds/Audio/impactMining_000.ogg"
+      },
+      "pick": [
+        "fs-385938"
+      ]
+    },
+    "rumble": {
+      "desc": "Low thunder under the smash and the transform shock.",
+      "bus": "player",
+      "gain": -4,
+      "maxLen": 1.2,
+      "candidates": {
+        "fs-105309": "freesound/thunder/105309.mp3",
+        "fs-475094": "freesound/thunder/475094.mp3",
+        "fs-195439": "freesound/thunder/195439.mp3"
+      },
+      "pick": [
+        "fs-475094"
+      ]
+    },
+    "zap": {
+      "desc": "Electric spark: Lightning Rod, Stitched shock.",
+      "bus": "player",
+      "gain": -8,
+      "rate": [
+        0.95,
+        1.1
+      ],
+      "gap": 0.1,
+      "candidates": {
+        "fs-94132": "freesound/zap/94132.mp3",
+        "fs-853286": "freesound/zap/853286.mp3",
+        "fs-643860": "freesound/zap/643860.mp3"
+      },
+      "pick": [
+        "fs-94132"
+      ]
+    },
+    "swap": {
+      "desc": "Tag swap.",
+      "bus": "player",
+      "gain": -9,
+      "candidates": {
+        "fs-427823": "freesound/swap/427823.mp3",
+        "swosh-12": "oga/swoshes/swosh-12.flac",
+        "fs-179780": "freesound/swap/179780.mp3"
+      },
+      "pick": [
+        "fs-427823"
+      ]
+    },
+    "enemySwing": {
+      "desc": "Hunter melee strike whoosh (peaks on their strike).",
+      "bus": "enemy",
+      "gain": -9,
+      "rate": [
+        0.9,
+        1.05
+      ],
+      "gap": 0.05,
+      "candidates": {
+        "swosh-14": "oga/swoshes/swosh-14.flac",
+        "swosh-15": "oga/swoshes/swosh-15.flac",
+        "swosh-20": "oga/swoshes/swosh-20.flac",
+        "bse-swish-3": "oga/battle_sound_effects_0/battle_sound_effects/swish_3.wav"
+      },
+      "pick": [
+        "swosh-14",
+        "swosh-15",
+        "swosh-20"
+      ]
+    },
+    "heavyTell": {
+      "desc": "A purple (counterable) attack starts: a blade is drawn.",
+      "bus": "enemy",
+      "gain": -10,
+      "rate": [
+        0.95,
+        1.05
+      ],
+      "gap": 0.2,
+      "candidates": {
+        "rpg-unsheathe2": "oga/rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe2.wav",
+        "rpg-unsheathe4": "oga/rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe4.wav",
+        "k-draw-knife": "kenney/kenney_rpg-audio/Audio/drawKnife1.ogg"
+      },
+      "pick": [
+        "rpg-unsheathe2",
+        "rpg-unsheathe4"
+      ]
+    },
+    "enemyHurt": {
+      "desc": "Hunter pain grunt (not on every hit).",
+      "bus": "enemy",
+      "gain": -11,
+      "rate": [
+        0.92,
+        1.08
+      ],
+      "gap": 0.12,
+      "candidates": {
+        "fs-547209": "freesound/grunt/547209.mp3",
+        "fs-413186": "freesound/grunt/413186.mp3",
+        "fs-464486": "freesound/grunt/464486.mp3",
+        "fs-719053": "freesound/grunt/719053.mp3"
+      },
+      "pick": [
+        "fs-547209",
+        "fs-413186",
+        "fs-464486",
+        "fs-719053"
+      ]
+    },
+    "enemyDeath": {
+      "desc": "Hunter dies.",
+      "bus": "enemy",
+      "gain": -8,
+      "rate": [
+        0.95,
+        1.05
+      ],
+      "gap": 0.08,
+      "maxLen": 1.2,
+      "candidates": {
+        "fs-554443": "freesound/death/554443.mp3",
+        "fs-577033": "freesound/death/577033.mp3",
+        "fs-264062": "freesound/death/264062.mp3"
+      },
+      "pick": [
+        "fs-554443",
+        "fs-577033",
+        "fs-264062"
+      ]
+    },
+    "poiseBreak": {
+      "desc": "Hunter's guard breaks (stunned): armour crash.",
+      "bus": "player",
+      "gain": -6,
+      "candidates": {
+        "k-plate-heavy-0": "kenney/kenney_impact-sounds/Audio/impactPlate_heavy_000.ogg",
+        "k-plate-heavy-1": "kenney/kenney_impact-sounds/Audio/impactPlate_heavy_001.ogg",
+        "k-metal-heavy-1": "kenney/kenney_impact-sounds/Audio/impactMetal_heavy_001.ogg"
+      },
+      "pick": [
+        "k-plate-heavy-0"
+      ]
+    },
+    "crossbow": {
+      "desc": "Rogue fires a bolt.",
+      "bus": "enemy",
+      "gain": -8,
+      "rate": [
+        0.95,
+        1.05
+      ],
+      "gap": 0.05,
+      "candidates": {
+        "fs-163453": "freesound/crossbow/163453.mp3",
+        "fs-752211": "freesound/crossbow/752211.mp3",
+        "fs-561475": "freesound/crossbow/561475.mp3"
+      },
+      "pick": [
+        "fs-561475"
+      ]
+    },
+    "boltHit": {
+      "desc": "A bolt thuds into something.",
+      "bus": "enemy",
+      "gain": -9,
+      "gap": 0.05,
+      "candidates": {
+        "fs-521552": "freesound/arrowhit/521552.mp3",
+        "fs-443575": "freesound/arrowhit/443575.mp3"
+      },
+      "pick": [
+        "fs-521552"
+      ]
+    },
+    "mageCast": {
+      "desc": "Mage starts marking the circle.",
+      "bus": "enemy",
+      "gain": -10,
+      "gap": 0.2,
+      "candidates": {
+        "fs-563541": "freesound/cast/563541.mp3",
+        "fs-786291": "freesound/cast/786291.mp3",
+        "fs-442774": "freesound/cast/442774.mp3"
+      },
+      "pick": [
+        "fs-442774"
+      ]
+    },
+    "mageBlast": {
+      "desc": "The circle bursts.",
+      "bus": "enemy",
+      "gain": -6,
+      "maxLen": 1.2,
+      "gap": 0.08,
+      "candidates": {
+        "fs-739487": "freesound/magicboom/739487.mp3",
+        "fs-413224": "freesound/magicboom/413224.mp3",
+        "fs-570855": "freesound/magicboom/570855.mp3"
+      },
+      "pick": [
+        "fs-739487"
+      ]
+    },
+    "bell": {
+      "desc": "Graveyard bell on each new wave.",
+      "bus": "voice",
+      "gain": -8,
+      "maxLen": 2.6,
+      "candidates": {
+        "fs-633208": "freesound/bell/633208.mp3",
+        "fs-76405": "freesound/bell/76405.mp3",
+        "k-bell-heavy-1": "kenney/kenney_impact-sounds/Audio/impactBell_heavy_001.ogg"
+      },
+      "pick": [
+        "fs-633208"
+      ]
+    },
+    "gameOver": {
+      "desc": "The team falls.",
+      "bus": "voice",
+      "gain": -4,
+      "maxLen": 3,
+      "candidates": {
+        "fs-717952": "freesound/gameover/717952.mp3",
+        "fs-831971": "freesound/gameover/831971.mp3"
+      },
+      "pick": [
+        "fs-717952"
+      ]
+    },
+    "click": {
+      "desc": "Menu buttons.",
+      "bus": "ui",
+      "gain": -12,
+      "candidates": {
+        "k-click": "kenney/kenney_rpg-audio/Audio/metalClick.ogg",
+        "rpg-interface": "oga/rpg_sound_pack/RPG Sound Pack/interface/interface1.wav"
+      },
+      "pick": [
+        "k-click"
+      ]
+    },
+    "vo_fight": {
+      "desc": "Announcer.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "fight": "kenney/kenney_voiceover-pack-fighter/Audio/fight.ogg"
+      },
+      "pick": [
+        "fight"
+      ]
+    },
+    "vo_round1": {
+      "desc": "Announcer.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "round_1": "kenney/kenney_voiceover-pack-fighter/Audio/round_1.ogg"
+      },
+      "pick": [
+        "round_1"
+      ]
+    },
+    "vo_round2": {
+      "desc": "Announcer.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "round_2": "kenney/kenney_voiceover-pack-fighter/Audio/round_2.ogg"
+      },
+      "pick": [
+        "round_2"
+      ]
+    },
+    "vo_round3": {
+      "desc": "Announcer.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "round_3": "kenney/kenney_voiceover-pack-fighter/Audio/round_3.ogg"
+      },
+      "pick": [
+        "round_3"
+      ]
+    },
+    "vo_round4": {
+      "desc": "Announcer.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "round_4": "kenney/kenney_voiceover-pack-fighter/Audio/round_4.ogg"
+      },
+      "pick": [
+        "round_4"
+      ]
+    },
+    "vo_round5": {
+      "desc": "Announcer.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "round_5": "kenney/kenney_voiceover-pack-fighter/Audio/round_5.ogg"
+      },
+      "pick": [
+        "round_5"
+      ]
+    },
+    "vo_multikill": {
+      "desc": "Announcer: 3 kills in quick succession.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "multi_kill": "kenney/kenney_voiceover-pack-fighter/Audio/multi_kill.ogg"
+      },
+      "pick": [
+        "multi_kill"
+      ]
+    },
+    "vo_flawless": {
+      "desc": "Announcer: a wave cleared without taking damage.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "flawless_victory": "kenney/kenney_voiceover-pack-fighter/Audio/flawless_victory.ogg"
+      },
+      "pick": [
+        "flawless_victory"
+      ]
+    },
+    "vo_gameover": {
+      "desc": "Announcer.",
+      "bus": "voice",
+      "gain": -3,
+      "candidates": {
+        "game_over": "kenney/kenney_voiceover-pack-fighter/Audio/game_over.ogg"
+      },
+      "pick": [
+        "game_over"
+      ]
+    }
+  },
+  "loops": {
+    "music": {
+      "desc": "Fight music loop.",
+      "gain": -14,
+      "candidates": {
+        "xcvg-fight": "music/fight_looped.wav",
+        "cynic-battleA": "music/battleThemeA.mp3",
+        "joth-9th-circle": "music/The_9th_Circle_V2.mp3",
+        "spiderdave-nightmare": "music/46b.ogg"
+      },
+      "pick": "joth-9th-circle",
+      "maxLen": 75
+    },
+    "menuMusic": {
+      "desc": "Title screen music.",
+      "gain": -16,
+      "candidates": {
+        "memoraphile-spooky": "music/Memoraphile_-_Spooky_Dungeon.mp3",
+        "joth-9th-circle": "music/The_9th_Circle_V2.mp3"
+      },
+      "pick": "joth-9th-circle",
+      "maxLen": 75
+    },
+    "ambience": {
+      "desc": "Graveyard night bed under the fight.",
+      "gain": -24,
+      "candidates": {
+        "fs-826093": "freesound/ambience/826093.mp3",
+        "fs-829764": "freesound/ambience/829764.mp3",
+        "oga-wind1": "oga/wind1.wav"
+      },
+      "pick": "fs-826093",
+      "maxLen": 28
+    }
+  }
+}

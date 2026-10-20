@@ -1,0 +1,17 @@
+{
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "relativePathToDistFolder": "dist",
+  "usesPreloader": false,
+  "fullscreenEnabled": true,
+  "maxDpr": 1.5,
+  "orientation": "both",
+  "platformFit": "both",
+  "keywords": [
+    "monsters",
+    "action",
+    "brawler",
+    "halloween",
+    "werewolf"
+  ],
+  "kitId": null
+}

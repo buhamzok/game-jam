@@ -1,0 +1,12 @@
+{
+  "generationId": "c6ce3dc3-84d1-4c35-b640-0a3e85d06d7c",
+  "provider": "meshy",
+  "mode": "image-to-3d",
+  "quality": "standard",
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "outputPath": "art/werewolf-mesh.glb",
+  "status": "saved",
+  "sha256": "f0c9c1f1b2fc30ea16e79deecddf6025ae90f62f05590691056a6046db6797ca",
+  "modelUrl": "https://storage.googleapis.com/venus-app-a037a.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/c6ce3dc3-84d1-4c35-b640-0a3e85d06d7c/model.compressed.glb",
+  "seed": 457768462
+}

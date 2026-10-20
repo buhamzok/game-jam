@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+    /* Game palette: these become Tailwind utilities (bg-primary, text-primary,
+       bg-surface, ...). Werewolf amber on a graveyard night. */
+    --color-primary: #f59e0b;
+    --color-surface: #0d0a16;
+}
+
+/* Wave banner: punch in, settle, fade (total matches T.waves.bannerTime). */
+@keyframes banner-pop {
+    0% { transform: scale(2.2); opacity: 0; }
+    12% { transform: scale(0.95); opacity: 1; }
+    20% { transform: scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+.banner-pop {
+    animation: banner-pop 1.6s ease-out forwards;
+}
+
+/* ---------------------------------------------------------------------------
+   Viewport + device frame. The game fills the screen in both orientations:
+   portrait on phones (touch controls), landscape on PC (keyboard). Page scroll
+   and zoom are fully locked. game.config orientation is "both".
+--------------------------------------------------------------------------- */
+
+:root {
+    --game-w: 100vw;
+    /* Size unit for UI: the width of a 9:16 column. Equals the screen width on
+       portrait phones, and keeps buttons and HUD a sane size in landscape. */
+    --u: min(100vw, calc(100dvh * 9 / 16));
+    /* The RUN host already pads below its native header, so we deliberately
+       do NOT use env(safe-area-inset-top) — it double-pads on Android.
+       Consume via the pt-safe-top utility below. */
+    --safe-top: 0px;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: #000; /* letterbox bars */
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+    position: fixed;
+    inset: 0;
+}
+
+/* The device frame every screen renders inside (see ui/App.jsx). */
+#app-frame {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--game-w);
+    overflow: hidden;
+}
+
+/* Safe-area utilities. Bottom uses the real env inset (home indicator);
+   top uses --safe-top per the note above. */
+@utility pt-safe-top {
+    padding-top: calc(0.5rem + var(--safe-top));
+}
+@utility pb-safe-bottom {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}

@@ -1,0 +1,13 @@
+{
+  "generationId": "1aee6aae-7740-461a-b56e-ea985e306746",
+  "prompt": "Full body front view of a hulking undead graveyard golem boss standing in a strict T-pose, arms straight out horizontally, legs planted apart. Built from cracked grey tombstone plates bound with rusted chains and dark roots, glowing pale green eyes and pale green light leaking from chest cracks, moss and lichen across shoulders, enormous oversized stone fists, a broken monument slab fused into its back. Menacing, slightly hunched silhouette but the arms are perfectly straight in the T-pose. Whole body visible head to feet, nothing cropped. Plain flat light grey background, no ground, no shadow, no text. Sharp clean game-ready character concept art.",
+  "model": "gemini-3.1-flash-image-preview",
+  "seed": 486516434,
+  "imageUrl": "https://storage.googleapis.com/venus-app-a037a.firebasestorage.app/h5-imagegen/Zo8tRIGBpGhAGb0XCXoI/vNQnJFWZGxTGvS6jgw1aHkWKhbA3/349093d5-575b-49aa-982a-4099b2db95d6.png",
+  "requestPrompt": "Full body front view of a hulking undead graveyard golem boss standing in a strict T-pose, arms straight out horizontally, legs planted apart. Built from cracked grey tombstone plates bound with rusted chains and dark roots, glowing pale green eyes and pale green light leaking from chest cracks, moss and lichen across shoulders, enormous oversized stone fists, a broken monument slab fused into its back. Menacing, slightly hunched silhouette but the arms are perfectly straight in the T-pose. Whole body visible head to feet, nothing cropped. Plain flat light grey background, no ground, no shadow, no text. Sharp clean game-ready character concept art.",
+  "aspectRatio": "1:1",
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "outputPath": "art/bossgolem-concept.png",
+  "status": "saved",
+  "sha256": "5bd3f2b1a996f73fb7a137260034a1cc4f408c226a0f5740b8ddc29b9a9b34d0"
+}

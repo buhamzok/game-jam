@@ -1,0 +1,11 @@
+{
+  "generationId": "a0922327-8d5f-4246-ba05-cc93c06311e9",
+  "provider": "meshy",
+  "mode": "image-to-3d",
+  "quality": "standard",
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "outputPath": "art/vampire-mesh.glb",
+  "status": "saved",
+  "modelUrl": "https://storage.googleapis.com/venus-app-a037a.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/a0922327-8d5f-4246-ba05-cc93c06311e9/model.compressed.glb",
+  "seed": 1170600217
+}

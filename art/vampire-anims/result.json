@@ -1,0 +1,67 @@
+{
+  "char": "vampire",
+  "seconds": 318,
+  "riggedModelUrl": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/49bca90c-6b93-45b2-a3c8-0f2c21804690/rigged.glb",
+  "clips": [
+    {
+      "name": "idle",
+      "animation": 11,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/b7ae3106-8288-4397-8586-f5a7da5c6e4f/anim_11.glb"
+    },
+    {
+      "name": "run",
+      "animation": 15,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/a9025ed5-35d1-48d6-9e01-c971c78047e3/anim_15.glb"
+    },
+    {
+      "name": "hook",
+      "animation": 97,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/3da400a4-d506-4898-acf5-5651c6d742bb/anim_97.glb"
+    },
+    {
+      "name": "uppercut",
+      "animation": 219,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/acecd803-5f28-435c-902a-91a04687d5dd/anim_219.glb"
+    },
+    {
+      "name": "slam",
+      "animation": 221,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/63322beb-53b6-449b-80ba-e55ea75a5b62/anim_221.glb"
+    },
+    {
+      "name": "roll",
+      "animation": 452,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/102e9358-56be-42a8-ba76-5e284020b6f8/anim_452.glb"
+    },
+    {
+      "name": "guard",
+      "animation": 147,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/704bf974-792d-41ae-a46a-4bfe4f922520/anim_147.glb"
+    },
+    {
+      "name": "counter",
+      "animation": 90,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/3bfe1c3b-be66-4191-85ea-72db6b740620/anim_90.glb"
+    },
+    {
+      "name": "cast",
+      "animation": 125,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/b8f1acd9-aeae-4ff2-9b43-15620bfc38f3/anim_125.glb"
+    },
+    {
+      "name": "hit",
+      "animation": 179,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/dbafb79a-cb39-4dab-ad42-bb35081aebb1/anim_179.glb"
+    },
+    {
+      "name": "dead",
+      "animation": 185,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/f2466507-2a29-47e4-b1d4-e6d71222067e/anim_185.glb"
+    },
+    {
+      "name": "trans",
+      "animation": 397,
+      "url": "https://storage.googleapis.com/playground-venus-app.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/d11d82ab-5121-4643-b238-ed301ed3ed48/anim_397.glb"
+    }
+  ]
+}

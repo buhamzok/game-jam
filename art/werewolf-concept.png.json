@@ -1,0 +1,13 @@
+{
+  "generationId": "52d6367f-daa1-4811-81e7-7384a470aa45",
+  "prompt": "3D game character render of a heroic werewolf, stylized chunky low-poly mobile game art style, big head and short sturdy body, standing upright in a T-pose facing directly at the camera, both arms stretched straight out to the sides, legs slightly apart, amber orange fur with cream chest, pointed ears, glowing yellow eyes, small fangs, dark claws, torn purple shorts, full body visible from head to feet, plain white background, soft even lighting, centered",
+  "model": "gemini-3.1-flash-image-preview",
+  "seed": 602216993,
+  "imageUrl": "https://storage.googleapis.com/venus-app-a037a.firebasestorage.app/h5-imagegen/Zo8tRIGBpGhAGb0XCXoI/vNQnJFWZGxTGvS6jgw1aHkWKhbA3/92f0fc78-5f15-4e92-8294-32e1aa2f33da.png",
+  "requestPrompt": "3D game character render of a heroic werewolf, stylized chunky low-poly mobile game art style, big head and short sturdy body, standing upright in a T-pose facing directly at the camera, both arms stretched straight out to the sides, legs slightly apart, amber orange fur with cream chest, pointed ears, glowing yellow eyes, small fangs, dark claws, torn purple shorts, full body visible from head to feet, plain white background, soft even lighting, centered",
+  "aspectRatio": "1:1",
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "outputPath": "art/werewolf-concept.png",
+  "status": "saved",
+  "sha256": "b9977e454998a5b847652506d4c402bb2a706817888fdd32c558863afca791af"
+}

@@ -1,0 +1,46 @@
+- generic [active] [ref=f3e1]:
+  - generic: ✜
+  - generic [ref=f3e29]:
+    - generic:
+      - generic:
+        - generic: J
+        - generic: Claw
+      - generic:
+        - generic: Space
+        - generic: Dodge
+      - generic:
+        - generic: L
+        - generic: Guard / Counter
+      - generic:
+        - generic: Q
+        - generic: Transform (full bar)
+      - generic:
+        - generic: 1 / 2 / 3
+        - generic: Swap
+      - generic:
+        - generic: M
+        - generic: Sound
+    - generic:
+      - generic:
+        - generic:
+          - generic: HP
+          - generic: MOON
+          - generic:
+            - generic: Wave 0
+            - generic: KOs 0
+        - generic:
+          - button "W 1" [ref=f3e32]:
+            - generic [ref=f3e33]: W
+            - generic [ref=f3e36]: "1"
+          - button "V 2" [ref=f3e37]:
+            - generic [ref=f3e38]: V
+            - generic [ref=f3e41]: "2"
+          - button "S 3" [ref=f3e42]:
+            - generic [ref=f3e43]: S
+            - generic [ref=f3e46]: "3"
+        - generic:
+          - button "Menu" [ref=f3e47]
+          - generic:
+            - button "Camera shake off" [ref=f3e48]: SHAKE
+            - button "Damage flash off" [ref=f3e49]: FLASH
+          - button "Sound on" [ref=f3e50]: 🔊

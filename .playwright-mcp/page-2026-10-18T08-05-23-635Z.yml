@@ -1,0 +1,38 @@
+- generic [active] [ref=f15e1]:
+  - generic: ✜
+  - generic [ref=f15e7]:
+    - generic:
+      - generic:
+        - generic: J
+        - generic: Claw
+      - generic:
+        - generic: Space
+        - generic: Dodge
+      - generic:
+        - generic: L
+        - generic: Guard / Counter
+      - generic:
+        - generic: Q
+        - generic: Transform (full bar)
+      - generic:
+        - generic: 1 / 2 / 3
+        - generic: Swap
+    - generic:
+      - generic:
+        - generic:
+          - generic: HP
+          - generic: MOON
+          - generic:
+            - generic: Wave 0
+            - generic: KOs 0
+        - generic:
+          - button "W 1" [ref=f15e10]:
+            - generic [ref=f15e11]: W
+            - generic [ref=f15e14]: "1"
+          - button "V 2" [ref=f15e15]:
+            - generic [ref=f15e16]: V
+            - generic [ref=f15e19]: "2"
+          - button "S 3" [ref=f15e20]:
+            - generic [ref=f15e21]: S
+            - generic [ref=f15e24]: "3"
+        - button "Menu" [ref=f15e25]

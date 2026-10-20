@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - generic: ✜
+  - generic [ref=e25]:
+    - generic:
+      - generic:
+        - generic: J
+        - generic: Claw
+      - generic:
+        - generic: Space
+        - generic: Dodge
+      - generic:
+        - generic: L
+        - generic: Guard / Counter
+    - generic:
+      - generic:
+        - generic:
+          - generic: HP
+          - generic: MOON
+          - generic:
+            - generic: Wave 0
+            - generic: KOs 0
+        - button "Menu" [ref=e28]

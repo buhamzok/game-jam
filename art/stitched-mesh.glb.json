@@ -1,0 +1,12 @@
+{
+  "generationId": "0ca3e4d1-d0b0-4216-bb37-e91691b16824",
+  "provider": "meshy",
+  "mode": "image-to-3d",
+  "quality": "standard",
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "outputPath": "output.glb",
+  "status": "saved",
+  "sha256": "20982bac4fd738964fca076fde3aec82b2f35ea38b59df7723e7e98051bc1d48",
+  "modelUrl": "https://storage.googleapis.com/venus-app-a037a.firebasestorage.app/threedgen/Zo8tRIGBpGhAGb0XCXoI/0ca3e4d1-d0b0-4216-bb37-e91691b16824/model.compressed.glb",
+  "seed": 1924777457
+}

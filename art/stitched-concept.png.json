@@ -1,0 +1,13 @@
+{
+  "generationId": "9ad888f2-ce87-4226-9e62-4a3d3dab9735",
+  "prompt": "Full body character concept art of a friendly patchwork scarecrow golem, giant stitched plush doll warrior, burlap fabric with glowing electric green seams, single glowing round green eye, small brass bolts on neck and shoulders, wooden straw hands, hulking heroic proportions, standing in a neutral T-pose facing viewer, plain flat magenta background, even soft lighting, game character sheet",
+  "model": "gemini-3.1-flash-image-preview",
+  "seed": 1739734172,
+  "imageUrl": "https://storage.googleapis.com/venus-app-a037a.firebasestorage.app/h5-imagegen/Zo8tRIGBpGhAGb0XCXoI/vNQnJFWZGxTGvS6jgw1aHkWKhbA3/304a3264-962e-4918-8bbf-0532c17444e3.png",
+  "requestPrompt": "Full body character concept art of a friendly patchwork scarecrow golem, giant stitched plush doll warrior, burlap fabric with glowing electric green seams, single glowing round green eye, small brass bolts on neck and shoulders, wooden straw hands, hulking heroic proportions, standing in a neutral T-pose facing viewer, plain flat magenta background, even soft lighting, game character sheet",
+  "aspectRatio": "1:1",
+  "gameId": "Zo8tRIGBpGhAGb0XCXoI",
+  "outputPath": "art/stitched-concept.png",
+  "status": "saved",
+  "sha256": "f1b25665d25f0fabadafcb037294b193629e1a785a25cfc251cc2e87739d2e6c"
+}

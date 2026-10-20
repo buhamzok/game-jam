@@ -1,0 +1,16 @@
+- generic [active] [ref=e1]:
+  - generic: ✜
+  - generic [ref=e39]:
+    - generic:
+      - button "CLAW" [ref=e53]
+      - button "DODGE" [ref=e54]
+      - button "GUARD" [ref=e55]
+    - generic:
+      - generic:
+        - generic:
+          - generic: HP
+          - generic: MOON
+          - generic:
+            - generic: Wave 0
+            - generic: KOs 0
+        - button "Menu" [ref=e42]
