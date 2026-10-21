@@ -1,6 +1,6 @@
 # Tag Team Terror: Spec and Build Plan
 
-Oct 18, 2026 · Josephine Kemigisha
+Oct 18, 2026 (updated Oct 21) · Josephine Kemigisha
 
 Live, editable version: https://claude.ai/code/artifact/ffc7bb84-0ca3-46dd-b08d-8145669470d3
 
@@ -10,9 +10,11 @@ Tag Team Terror is a 3D monster tag-team brawler for the RUN.world October Jam (
 
 Still to build: the shield knight and a boss, techniques (E), a Daily Hunt leaderboard and a skin shop. Built locally but not deployed yet: the full sound pass (effects, monster voices, announcer, music and ambience, all CC0), an end-screen vote prompt with a Share button, and the Stitched fixes from the phone test. On the evening of Oct 18, `rundot jam promo` showed the entry at rank #190 with 3 votes and 30 plays.
 
-**Next session: the owner auditions the sounds on the sound board and saves picks, then rebuild, deploy (owner's call), and start posting from docs/vote-push.md.**
+**Oct 21:** the boss fight, the fence fix, the friend challenge, the skin shop and realms (a portal after every boss) are built and tested in the browser on the GitHub branch `claude/fight-polish` ([buhamzok/game-jam](https://github.com/buhamzok/game-jam)). None of it is deployed yet.
 
-- Project folder: `D:\PROJECTS2\tag-team-terror`
+**Next session: merge `claude/fight-polish`, pull it on the PC, play it on a phone and a PC (boss phase 2, portals, the skin shop in the playground), then `npm run build` and `rundot deploy` (owner's call). The deploy also uploads `rundot/shop.config.json`.**
+
+- Project folder: `D:\PROJECTS2\tag-team-terror` (GitHub: [buhamzok/game-jam](https://github.com/buhamzok/game-jam))
 - RUN game ID: `Zo8tRIGBpGhAGb0XCXoI` (public; builds 1.0.0 to 1.5.0; entered in the October Jam)
 - Public link: [play the latest build](https://w.run/cobaltphoenix373/tag-team-terror)
 - Credits: 104,066 (the 100,000 jam bonus arrived)
@@ -64,9 +66,25 @@ Three monsters fight as a full tag team in 3D on phones and PC. v1.3.0 went publ
 | Controls | Phones: portrait, touch joystick and buttons. PC: landscape, keyboard and mouse with on-screen key hints | Type check passes; PC not re-tested |
 | RUN | Builds 1.0.0 to 1.5.0; public and entered in the jam since 1.3.0 (14 plays, 2 votes on Oct 18); 1.5.0 is the live build; orientation both, offered on phones and PC; thumbnail; local playground | Prod smoke test passed; listed on the jam page; 1.5.0 checked on the public link |
 
-Not built yet: music, shield knight, boss, techniques (E), Daily Hunt, leaderboard, skin shop, trailer.
+Not built yet (as of Oct 18): music, shield knight, boss, techniques (E), Daily Hunt, leaderboard, skin shop, trailer. The boss, Daily Hunt, leaderboard, sound and skin shop have since been built; see "Built Oct 21".
 
 **Fixed after the phone test** (Oct 18, not deployed yet): five Stitched clips (finisher slam, dodge, counter, hit, death) from the second animation batch had never been downloaded, so his finisher and his smash replayed his first punch. They are merged now, and every Stitched attack clip is timed from its measured hit frame, so the blow lands the moment the game registers it. His speed is 320 with the walk cycle at 3.4x, so his feet no longer slide. The Werewolf and the Vampire have the same gap (their dodge, counter or hit, death and finisher are still first-batch clips): they play fine, but those are not their intended moves.
+
+## Built Oct 21 (branch claude/fight-polish, not deployed yet)
+
+Tested in a headless browser: type check, production build, frame-stepped scenarios and a random-input bot that played from wave 1 to wave 14, through two boss fights and two portals, with no errors. Not yet played on a phone.
+
+| Area | What changed |
+| --- | --- |
+| Gravelord boss | Hyper armor: normal hits never interrupt it; only a poise break stuns it. Its body radius (92) now matches the 3.2 m model, so monsters no longer stand inside it. At half HP it roars into phase 2: immune for 1.5 s, pushes the player back, raises a knight and a barbarian, attacks 18% faster with shorter cooldowns, quakes every second attack with a wider circle, and adds the **Grave Leap** (it jumps onto a red circle under a player who keeps their distance; dodge out). Its death: slow motion, every hunter left crumbles (KOs still count), the team heals 35% and refills energy, "GRAVELORD FALLS". The boss bar shows a notch at 50% and "ENRAGED". |
+| Fight feel | "WAVE CLEAR" or "FLAWLESS" callout when a wave ends. |
+| Fence clipping | Bodies stop 38 units inside the fence on the sides and far end, 90 at the near fence, so no monster or hunter stands in the railings. |
+| Challenge a friend (Best Social Features) | End screen: "Challenge a friend: beat wave N" shares a RUN link with the wave, KOs and the player's name; the RUN app's own Share button sends the same challenge after a run. Opening the link shows a challenge card on the menu (ACCEPT), a target line in the HUD, a "CHALLENGE BEATEN" banner when passed, and "Challenge back" on the end screen. Read at launch with `app.resolveLaunchIntent()`. |
+| Skin shop (Best Monetization) | Two recolors per monster (Silverback, Hellhound, Nosferatu, Blood Moon, Pumpkin King, Toxic) plus a faint aura; looks only. Unlock with Souls (earned every run: 1 per KO, 5 per wave, 25 per Gravelord), with RUN Bits (50 or 100), or all six for $0.99 (`tier_099`). Shop items in `rundot/shop.config.json`; ownership from RUN entitlements. SKINS button on the menu. |
+| Realms (levels) | A portal opens when the Gravelord falls; waves wait until the player steps in. Four realms in a cycle: the Graveyard, the Hollow Woods (1500 x 2000, dead trees), the Pumpkin Patch (giant jack-o'-lanterns, lantern light) and the Blood Moon Crypt (gravestones and a coffin). Each has its own size, ground, fog, lights and border; obstacles are solid and stop bolts (cover). Waves keep counting and getting harder; after the crypt the cycle repeats ("The Graveyard II"). |
+| Repo | Screenshots moved to `docs/screenshots/`, browser test logs removed, README describes the game. `NO_PLAYGROUND=1 npm run dev` runs without the RUN sign-in (headless tests). |
+
+To check on a phone: the Grave Leap circle is readable, the boss is beatable at wave 5, the Hollow Woods trees do not hide the action, and the frame rate holds in the Pumpkin Patch (six point lights).
 
 ## Architecture
 
@@ -189,10 +207,11 @@ Twelve milestones; 1 to 4 are done, 5 is nearly done (techniques are left), 6 ha
 5. **Techniques and transformations.** Transformations are built: Q with a full bar (TRNS button on phones), a short transform pose, then 10 s with +35% damage. **Full Moon** (Werewolf): black and bigger, faster, cannot drop below 1 HP, ends with a howl shockwave. **Night Swarm** (Vampire): a swarm of bats that bites nearby hunters, with faster strikes that heal her. **Red Overcharge** (Stitched): reddish, heals the team and shocks nearby hunters. The hold-to-block guard and a move set per monster shipped in v1.4.0. Left: E = technique (cooldown), and a sharper cut-in where the monster's portrait slashes across the screen (today it is a 1 s title card).
 6. **The vote campaign.** Public and entered on Oct 18; that evening `rundot jam promo` showed rank #190, 3 votes and 30 plays. Built (not deployed yet): the end screen asks "Enjoyed it?" and points to the jam page, with a Share with a friend button (the RUN app opens the phone's share sheet). The posts, links, rules and schedule are in `docs/vote-push.md` in the project folder. Next: a 15 s trailer with the installed `explainer-high-energy` skill, then a short clip every few days.
 7. **Sound.** Rebuilt after the first pass sounded wrong and late (whooshes peaked after the hit, trailer swells, UI and 8-bit sounds, dull thumps). Every sound event now has CC0 candidates from Kenney, OpenGameArt and Freesound in `tools/sfx-kit.json`, measured (onset, attack, spectrum, noise) before use and cut to start on their first frame. Hits are layered punch-bank impacts (crack plus body) with a deeper layer on finishers and specials. Whooshes start early so their peak lands on the hit frame. Each monster has its own voice (pain, transformation howl, shriek or roar), and hunters grunt, die, draw a blade before a purple attack, fire crossbows and cast. An arcade announcer calls rounds 1 to 5, "Fight!", multi kills, flawless waves and game over, and a graveyard bell tolls from wave 6. A battle music loop and night ambience play under the fight, with menu music on the title screen; the announcer ducks the music. The mix has buses and a limiter, variations and stereo position for hunters. The owner picks sounds by ear on the local sound board (`/tools/sound-board.html`), and `python -I tools/build-sfx.py` rebuilds. Credits are in `docs/sound-credits.md`.
-8. **Enemy variety and a boss.** Shipped in v1.5.0: crossbow rogue (ranged, red line telegraph), mage (purple circle) and waves that get harder. Still to build: shield knight (blocks from the front; flank it or break its guard) and a boss on wave 5 with three attack patterns and a second phase at half HP. With the new budget the boss can be a custom AI model ("Grand Hunter"); fallback is a giant barbarian. A run becomes 5 waves plus the boss, ending in a victory screen with time and score.
+8. **Enemy variety and a boss.** Shipped in v1.5.0: crossbow rogue (ranged, red line telegraph), mage (purple circle) and waves that get harder. The Gravelord boss (every 5 waves) is built, with a phase 2 since Oct 21. Still to build: shield knight (blocks from the front; flank it or break its guard) and a boss on wave 5 with three attack patterns and a second phase at half HP. With the new budget the boss can be a custom AI model ("Grand Hunter"); fallback is a giant barbarian. A run becomes 5 waves plus the boss, ending in a victory screen with time and score.
 9. **Daily Hunt and leaderboard (Most Sticky).** A seeded run each day with one modifier (for example "knights only"); score on a RUN leaderboard; daily streak in RUN app storage.
-10. **Skin shop (Best Monetization).** Color variants per monster bought with RUN Bits through the RUN Shop API; looks only, never stats.
-11. **Challenge a friend (Best Social Features).** Share today's Daily Hunt with your score through the RUN Sharing API.
+10. **Skin shop (Best Monetization).** Built Oct 21: six color variants for Souls, RUN Bits or a $0.99 bundle; looks only, never stats.
+11. **Challenge a friend (Best Social Features).** Built Oct 21: share the wave you reached; the friend's game reads it at launch.
+13. **Realms.** Built Oct 21: a portal after every boss leads to the next of four maps.
 12. **Polish, performance and final submit.** Phone frame-rate check, merge static props, trim the 1 MB script bundle, first-run tutorial ("Dodge red, counter purple"), settings; final build and checks on Nov 1.
 
 ## Schedule
@@ -238,6 +257,8 @@ Run these from `D:\PROJECTS2\tag-team-terror`. The dev server must stay on local
 | Animate a generated character (spends credits) | open `http://localhost:5173/?tool=animate&char=<name>&go=1` |
 | Jam share links | `rundot jam promo` |
 | Sound board (pick sounds by ear) | open `http://localhost:5173/tools/sound-board.html` |
+| Dev server without the RUN sign-in (RUN features mocked) | `NO_PLAYGROUND=1 npm run dev` (PowerShell: `$env:NO_PLAYGROUND=1; npm run dev`) |
+| Try a challenge link locally | open `http://localhost:5173/?beat=7&from=Jo` |
 | Rebuild sounds (after saving picks on the sound board) | `python -I tools/build-sfx.py` |
 
 Dev-only console handle: `window.__ttt = { view, world, input }`. When the browser tab is hidden the frame loop pauses, so test by calling `__ttt.view.step(1/60)` in a loop. Every combat number lives in `src/game/tuning.ts`.

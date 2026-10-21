@@ -13,10 +13,14 @@ The simulation is 2D and renderer-free (sim units, y down, 100 units = 1 m); thr
 - **player.ts**: the hero state machine (idle/move, 3-hit combo, dodge, guard, counter, special (pounce, swarm or smash), transform, entry, hurt, dead).
 - **hunter.ts**: hunter AI. Melee (knight, barbarian): red jab (dodge or block), purple heavy (guard in the parry window to counter; armored windup). Ranged: rogue (crossbow bolt along a red aim line), mage (purple circle blast). Stats scale with the wave (`WaveMods`, `T.difficulty`).
 - **fxTypes.ts**: the `Fx` interface the sim calls for effects, hitstop and shake.
+- **realms.ts**: the four maps (size, solid obstacles, theme); world.ts opens a portal after each boss and moves the fight to the next realm.
+- **skins.ts**: cosmetic skin definitions and Souls rewards (shop logic in `src/sdk/skinShop.ts`, screen in `src/ui/SkinShop.tsx`, RUN shop items in `rundot/shop.config.json`).
 - **input.ts**: buffered actions shared by touch controls (`src/ui/Controls.tsx`) and keyboard (WASD, J claw, K dodge, L guard).
-- **view/**: three.js. `gameView.ts` (renderer, 3/4 camera, game loop, `step(dt)`), `actors.ts` (sim state to animation clips, transformation looks, telegraph cones, aim lines and circles), `bats.ts` (instanced bat swarm), `bolts.ts` (crossbow bolts), `characterView.ts` (skinned clone, mixer, glow), `fx3d.ts` (particles, arcs, rings, text sprites), `arena3d.ts` (graveyard, props, lights), `assets.ts` (GLB loading via RUN CDN or local fallback).
+- **view/**: three.js. `gameView.ts` (renderer, 3/4 camera, game loop, `step(dt)`), `actors.ts` (sim state to animation clips, transformation looks, telegraph cones, aim lines and circles), `bats.ts` (instanced bat swarm), `bolts.ts` (crossbow bolts), `characterView.ts` (skinned clone, mixer, glow), `fx3d.ts` (particles, arcs, rings, text sprites), `arena3d.ts` (realm arena: ground, border, obstacles, props, lights), `portal3d.ts` (the realm portal), `assets.ts` (GLB loading via RUN CDN or local fallback).
 - Time: real time for camera/text, sim time is 0 during hitstop, enemy time is slowed during Witching Hour.
-- Dev only: `window.__ttt = { view, world, input, audio }`. With the browser pane hidden, rAF stops, so test by calling `view.step(1/60)` from the console.
+- RUN features in `src/sdk/`: `dailyHunt.ts` (leaderboard, streak), `challenge.ts` (challenge links via `app.resolveLaunchIntent()`), `skinShop.ts` (Souls, entitlements, purchases).
+- `NO_PLAYGROUND=1 npm run dev` skips the RUN sign-in for headless browser tests; `?beat=7&from=Jo` fakes a challenge.
+- Dev only: `window.__ttt = { view, world, input, audio }`, `window.__store`. With the browser pane hidden, rAF stops, so test by calling `view.step(1/60)` from the console.
 
 ## Assets
 
