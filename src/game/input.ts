@@ -7,12 +7,13 @@
  * consumes it once the player is free to act, so a tap that lands a few frames
  * early is not lost.
  *
- * PC layout: WASD (or arrows) move; J or left click = claw; Space, K or Shift
- * = dodge; L or right click = guard/counter.
+ * PC layout: WASD (or arrows) move; J or left click = claw; E = special
+ * (cooldown); Space, K or Shift = dodge; L or right click = guard/counter;
+ * Q = transform (full bar).
  */
 import { store } from '../state/store.ts';
 
-export type Action = 'attack' | 'dodge' | 'guard' | 'trans' | 'swap0' | 'swap1' | 'swap2';
+export type Action = 'attack' | 'special' | 'dodge' | 'guard' | 'trans' | 'swap0' | 'swap1' | 'swap2';
 export type InputMode = 'touch' | 'keyboard';
 
 const KEY_ACTIONS: Record<string, Action> = {
@@ -22,6 +23,7 @@ const KEY_ACTIONS: Record<string, Action> = {
     ShiftLeft: 'dodge',
     ShiftRight: 'dodge',
     KeyL: 'guard',
+    KeyE: 'special',
     KeyQ: 'trans',
     Digit1: 'swap0',
     Digit2: 'swap1',
@@ -31,6 +33,7 @@ const KEY_ACTIONS: Record<string, Action> = {
 /** Key labels for on-screen hints, per action. */
 export const KEY_HINTS: Record<Action, string> = {
     attack: 'J / Click',
+    special: 'E',
     dodge: 'Space',
     guard: 'L / R-Click',
     trans: 'Q',
@@ -58,7 +61,7 @@ class Input {
     private joyX = 0;
     private joyY = 0;
     private keys = new Set<string>();
-    private pressedAt: Record<Action, number> = { attack: -1, dodge: -1, guard: -1, trans: -1, swap0: -1, swap1: -1, swap2: -1 };
+    private pressedAt: Record<Action, number> = { attack: -1, special: -1, dodge: -1, guard: -1, trans: -1, swap0: -1, swap1: -1, swap2: -1 };
     private holds: Set<Action> = new Set();
 
     press(action: Action): void {
@@ -115,7 +118,7 @@ class Input {
         this.joyY = 0;
         this.keys.clear();
         this.holds.clear();
-        this.pressedAt = { attack: -1, dodge: -1, guard: -1, trans: -1, swap0: -1, swap1: -1, swap2: -1 };
+        this.pressedAt = { attack: -1, special: -1, dodge: -1, guard: -1, trans: -1, swap0: -1, swap1: -1, swap2: -1 };
     }
 
     /**

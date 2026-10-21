@@ -103,11 +103,11 @@ export default function MainMenu() {
                     <span className="text-violet-400">Purple:</span> GUARD right as it lands = <span className="text-violet-300">COUNTER</span>.
                 </p>
                 <p>
-                    <span className="text-amber-400">Full bar:</span> next CLAW = special, or TRANSFORM for 10 s.
+                    <span className="text-amber-400">SPECIAL</span> (E) when charged. <span className="text-amber-400">Full bar:</span> TRANSFORM (Q) for 10 s.
                 </p>
             </div>
 
-            <p className="text-[10px] leading-tight text-white/40">WASD move · J claw · Space dodge · L guard · Q transform · 1 2 3 swap · M sound · Enter fight</p>
+            <p className="text-[10px] leading-tight text-white/40">WASD move · J claw · E special · Space dodge · L guard · Q transform · 1 2 3 swap · M sound · Enter fight</p>
         </div>
     );
 }

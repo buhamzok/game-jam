@@ -85,8 +85,10 @@ export interface MonsterDef {
     speed: number;
     /** Three-hit claw combo. The last hit is slower and hits harder. */
     combo: SwingDef[];
-    /** Special attack used when the energy bar is full. */
+    /** Special attack on its own button (E / SPECIAL), with a cooldown. The energy bar is only for transforming. */
     special: PounceDef;
+    /** Seconds between specials. */
+    specialCooldown: number;
     specialText: string;
     /** Short special name for the attack button when the bar is full. */
     specialButton: string;
@@ -118,6 +120,7 @@ export const T = {
                 { dmg: 20, poise: 26, knock: 380, windup: 0.09, active: 0.08, recover: 0.26, range: 138, arcDeg: 170, lunge: 115, hitstop: 0.09, shake: 0.3 },
             ] as SwingDef[],
             special: { style: 'pounce', duration: 0.38, maxRange: 480, radius: 175, dmg: 45, poise: 60, knock: 440, hitstop: 0.12, recover: 0.15 } as PounceDef,
+            specialCooldown: 9,
             specialText: 'MOON POUNCE',
             specialButton: 'POUNCE',
             energyLabel: 'MOON',
@@ -135,11 +138,13 @@ export const T = {
                 { dmg: 16, poise: 22, knock: 320, windup: 0.08, active: 0.07, recover: 0.22, range: 140, arcDeg: 150, lunge: 130, hitstop: 0.08, shake: 0.26 },
             ] as SwingDef[],
             special: { style: 'swarm', duration: 0.6, maxRange: 600, radius: 210, dmg: 40, poise: 55, knock: 380, hitstop: 0.12, recover: 0.32, pathDmg: 8 } as PounceDef,
+            specialCooldown: 10,
             specialText: 'SWARM SLAM',
             specialButton: 'SWARM',
             energyLabel: 'BLOOD',
-            offFieldInterval: 2.2,
-            offFieldDmg: 6,
+            // no passive bench damage: hunters losing hp with nothing visibly hitting them read as a bug
+            offFieldInterval: 999,
+            offFieldDmg: 0,
         },
         stitched: {
             name: 'Stitched',
@@ -156,6 +161,7 @@ export const T = {
                 style: 'smash', duration: 0.42, maxRange: 420, radius: 240, dmg: 55, poise: 80, knock: 480, hitstop: 0.16, recover: 0.42,
                 offset: 60, shockDelay: 0.22, shockRadius: 380, shockDmg: 15,
             } as PounceDef,
+            specialCooldown: 11,
             specialText: 'THUNDER SMASH',
             specialButton: 'SMASH',
             energyLabel: 'VOLT',
@@ -200,7 +206,7 @@ export const T = {
     /** Perfect-dodge reward: enemies slow down while the player keeps full speed. */
     witching: { duration: 1.5, enemyTimeScale: 0.12, cooldown: 8, moveBuff: 1.25 },
 
-    /** Transformations (Q while the energy bar is full): one per monster. */
+    /** Transformations (Q while the energy bar is full; nothing else spends the bar): one per monster. */
     trans: {
         /** Seconds transformed. */
         duration: 10,
@@ -369,7 +375,7 @@ export const T = {
     camera: { anchorY: 0.4, lerp: 8 },
 
     /** How long a button press stays queued while the player is busy. */
-    inputBuffer: { attack: 0.25, dodge: 0.15, guard: 0.1, swap: 0.2, trans: 0.25 },
+    inputBuffer: { attack: 0.25, special: 0.25, dodge: 0.15, guard: 0.1, swap: 0.2, trans: 0.25 },
 };
 
 export const DEG = Math.PI / 180;

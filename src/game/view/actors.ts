@@ -308,7 +308,7 @@ export class HeroView {
         else if (this.transBlend > 0.05 && this.kind === 'stitched') c.setGlow(C.overcharge, (0.14 + 0.08 * pulse) * this.transBlend);
         // moonlit sheen so the black wolf still reads against the dark ground
         else if (this.transBlend > 0.05 && this.kind === 'werewolf') c.setGlow(0x312e81, 0.12 * this.transBlend);
-        else if (p.specialReady && p.alive) c.setGlow(READY_GLOW[this.kind], 0.25 + 0.2 * pulse);
+        else if (p.transReady && p.alive) c.setGlow(READY_GLOW[this.kind], 0.25 + 0.2 * pulse);
         else c.setGlow(this.skinGlow, this.skinGlowAmount * (0.85 + 0.15 * pulse));
         c.setOpacity(p.hurtFlicker > 0 && Math.floor(p.hurtFlicker * 20) % 2 === 0 ? 0.35 : p.state === 'dodge' ? 0.7 : 1);
 

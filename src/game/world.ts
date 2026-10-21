@@ -92,6 +92,7 @@ export class World {
         hp: -1,
         energy: -1,
         special: false,
+        specialCd: 0,
         perfect: false,
         witching: false,
         wave: -1,
@@ -1071,6 +1072,8 @@ export class World {
             hp: Math.ceil(u.hp),
             energy: Math.floor(u.energy),
             special: u.energy >= T.energy.max,
+            // 0.1 s steps so the SPECIAL button's ring animates without patching every frame
+            specialCd: u.specialCd <= 0 ? 0 : Math.ceil(u.specialCd * 10) / 10,
             perfect: p.perfectCd <= 0,
             witching: this.witching > 0,
             wave: this.wave,
@@ -1090,6 +1093,7 @@ export class World {
             next.hp !== h.hp ||
             next.energy !== h.energy ||
             next.special !== h.special ||
+            next.specialCd !== h.specialCd ||
             next.perfect !== h.perfect ||
             next.witching !== h.witching ||
             next.wave !== h.wave ||
@@ -1107,7 +1111,9 @@ export class World {
             store.patch({
                 hp: next.hp,
                 energy: next.energy,
-                specialReady: next.special,
+                transReady: next.special,
+                specialCd: next.specialCd,
+                specialCdMax: T.monsters[u.kind].specialCooldown,
                 perfectReady: next.perfect,
                 witching: next.witching,
                 wave: next.wave,

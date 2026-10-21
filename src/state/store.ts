@@ -33,8 +33,11 @@ export interface AppState {
     hpMax: number;
     energy: number;
     energyMax: number;
-    /** Energy bar is full: the next attack is the active monster's special. */
-    specialReady: boolean;
+    /** Energy bar is full: Q transforms (nothing else spends the bar). */
+    transReady: boolean;
+    /** Seconds until the active monster's special is ready (0 = ready), and its full cooldown. */
+    specialCd: number;
+    specialCdMax: number;
     /** Perfect dodge (Witching Hour) is off cooldown. */
     perfectReady: boolean;
     witching: boolean;
@@ -128,7 +131,9 @@ let state: AppState = {
     hpMax: 100,
     energy: 0,
     energyMax: 100,
-    specialReady: false,
+    transReady: false,
+    specialCd: 0,
+    specialCdMax: 10,
     perfectReady: true,
     witching: false,
     swapReady: true,

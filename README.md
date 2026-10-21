@@ -10,6 +10,7 @@ A 3D monster tag-team brawler for the [RUN October Jam](https://run.world/jams/o
 | --- | --- | --- |
 | Move | WASD | Joystick |
 | Claw (3-hit combo) | J or click | CLAW |
+| Special (cooldown) | E | SPECIAL |
 | Dodge | Space or K | DODGE |
 | Guard / counter | L or right-click (hold to block) | GUARD |
 | Transform (full bar) | Q | TRNS |
@@ -17,7 +18,8 @@ A 3D monster tag-team brawler for the [RUN October Jam](https://run.world/jams/o
 
 - **Red** attacks: dodge them. Dodging at the last moment starts the Witching Hour (enemies slow down).
 - **Purple** attacks: guard just as they land to counter.
-- **Full bar**: your next claw is the monster's special, or press Q to transform for 10 seconds.
+- **Special**: E (or SPECIAL) fires the monster's special, then it recharges.
+- **Full bar**: press Q (or TRNS) to transform for 10 seconds. Only transforming spends the bar.
 
 ## Features
 

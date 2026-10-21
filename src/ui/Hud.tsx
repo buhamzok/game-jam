@@ -157,7 +157,7 @@ export default function Hud() {
     const hpMax = useStore((s) => s.hpMax);
     const energy = useStore((s) => s.energy);
     const energyMax = useStore((s) => s.energyMax);
-    const specialReady = useStore((s) => s.specialReady);
+    const transReady = useStore((s) => s.transReady);
     const wave = useStore((s) => s.wave);
     const kills = useStore((s) => s.kills);
     const banner = useStore((s) => s.banner);
@@ -212,19 +212,19 @@ export default function Hud() {
             <div className="flex items-start gap-3 p-3">
                 <div className="flex w-full max-w-[420px] flex-1 flex-col gap-1.5 rounded-xl bg-black/45 p-2.5">
                     <Bar value={hp} max={hpMax} color={hp / hpMax > 0.35 ? '#22c55e' : '#ef4444'} label="HP" />
-                    <Bar value={energy} max={energyMax} color={specialReady ? '#fde68a' : '#f59e0b'} label={team[activeMonster] ? T.monsters[team[activeMonster].kind].energyLabel : 'MOON'} />
+                    <Bar value={energy} max={energyMax} color={transReady ? '#fde68a' : '#f59e0b'} label={team[activeMonster] ? T.monsters[team[activeMonster].kind].energyLabel : 'MOON'} />
                     <GuardPips hits={guardHits} broken={guardCd > 0} />
                     {trans && (
                         <div className="text-center text-[10px] font-black tracking-[0.3em] text-amber-300 tabular-nums">
                             {transLabel} {transLeft}s · +{Math.round((T.trans.dmgMult - 1) * 100)}% DMG
                         </div>
                     )}
-                    <div className="flex justify-between text-xs font-bold text-white/70 tabular-nums">
-                        <span>
+                    <div className="flex justify-between gap-2 text-xs font-bold text-white/70 tabular-nums">
+                        <span className="min-w-0 truncate">
                             Wave {wave}
                             {realmName && <span className="ml-1.5 text-[10px] font-black tracking-wider text-violet-300/80">{realmName.replace(/^THE /, '')}</span>}
                         </span>
-                        <span>KOs {kills}</span>
+                        <span className="shrink-0">KOs {kills}</span>
                     </div>
                     {portalOpen && <div className="animate-pulse text-center text-[10px] font-black tracking-[0.2em] text-violet-300">{'\u2728'} PORTAL OPEN: STEP IN</div>}
                     {challenge && (

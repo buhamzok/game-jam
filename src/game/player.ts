@@ -29,6 +29,8 @@ export interface BattleMonster {
     alive: boolean;
     /** Off-field only: seconds until the next automatic off-field strike. */
     benchCd: number;
+    /** Seconds until this monster's special is ready again (ticks on the bench too). */
+    specialCd: number;
 }
 
 const defOf = (kind: MonsterKind) => T.monsters[kind];
@@ -40,6 +42,7 @@ export class Player {
         energy: 0,
         alive: true,
         benchCd: 0,
+        specialCd: 0,
     }));
 
     /** Index in `team` of the monster driving the body. */
@@ -116,8 +119,14 @@ export class Player {
         return this.team.some((m) => m.alive);
     }
 
-    get specialReady(): boolean {
+    /** The energy bar is full: Q transforms. Only transforming spends the bar. */
+    get transReady(): boolean {
         return this.unit().energy >= T.energy.max;
+    }
+
+    /** The active monster's special is off cooldown (E / SPECIAL). */
+    get specialReady(): boolean {
+        return this.unit().specialCd <= 0;
     }
 
     swapCd = 0;
@@ -165,6 +174,7 @@ export class Player {
         this.flashT = Math.max(0, this.flashT - dt);
         this.hurtFlicker = Math.max(0, this.hurtFlicker - dt);
 
+        for (const m of this.team) m.specialCd = Math.max(0, m.specialCd - dt);
         // benched monsters refill energy and tick their off-field strikes
         for (const m of this.team) {
             if (m === this.unit() || !m.alive) continue;
@@ -184,7 +194,7 @@ export class Player {
         switch (this.state) {
             case 'idle':
             case 'move':
-                if (this.trySwap() || this.tryTrans() || this.tryGuard() || this.tryDodge(mv) || this.tryAttack(mv)) break;
+                if (this.trySwap() || this.tryTrans() || this.tryGuard() || this.tryDodge(mv) || this.trySpecial() || this.tryAttack(mv)) break;
                 if (moving) {
                     const speed = this.d().speed * (this.w.witching > 0 ? T.witching.moveBuff : 1) * (this.transT > 0 && this.kind() === 'werewolf' ? T.trans.werewolf.speedMult : 1);
                     this.x += mv.x * speed * dt;
@@ -269,7 +279,7 @@ export class Player {
     /** Q while the energy bar is full: the active monster strikes its transform pose, then transforms. */
     private tryTrans(): boolean {
         if (this.transT > 0) return false;
-        if (!this.specialReady) return false;
+        if (!this.transReady) return false;
         if (!this.unit().alive) return false;
         if (!input.has('trans', T.inputBuffer.trans)) return false;
         input.consume('trans');
@@ -317,15 +327,25 @@ export class Player {
         return true;
     }
 
+    /** Claw: always a combo swing. It never spends the energy bar (only Q does). */
     private tryAttack(mv: { x: number; y: number }): boolean {
         if (!input.has('attack', T.inputBuffer.attack)) return false;
         input.consume('attack');
-        if (this.specialReady) {
-            this.startSpecial();
-        } else {
-            const d = this.d();
-            this.startSwing(this.comboTimer > 0 ? (this.combo + 1) % d.combo.length : 0, mv);
+        const d = this.d();
+        this.startSwing(this.comboTimer > 0 ? (this.combo + 1) % d.combo.length : 0, mv);
+        return true;
+    }
+
+    /** E / SPECIAL: the monster's special when it is off cooldown. */
+    private trySpecial(): boolean {
+        if (!input.has('special', T.inputBuffer.special)) return false;
+        if (!this.specialReady) {
+            // pressed too early: drop it so it does not fire by surprise later
+            input.consume('special');
+            return false;
         }
+        input.consume('special');
+        this.startSpecial();
         return true;
     }
 
@@ -355,7 +375,7 @@ export class Player {
         }
         if (this.st >= strikeEnd) {
             // recovery can be cancelled into defense or a swap at any time
-            if (this.trySwap() || this.tryTrans() || this.tryGuard() || this.tryDodge(mv)) return;
+            if (this.trySwap() || this.tryTrans() || this.tryGuard() || this.tryDodge(mv) || this.trySpecial()) return;
             if (this.st >= strikeEnd + s.recover * T.comboCancelAt && input.has('attack', T.inputBuffer.attack)) {
                 this.comboTimer = T.comboResetTime;
                 this.tryAttack(mv);
@@ -449,7 +469,7 @@ export class Player {
     private startSpecial(): void {
         const p: PounceDef = this.d().special;
         const u = this.unit();
-        u.energy = 0;
+        u.specialCd = this.d().specialCooldown;
         this.specialLanded = false;
         this.bitten.clear();
         this.fromX = this.x;

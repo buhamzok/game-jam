@@ -109,9 +109,11 @@ interface ButtonProps {
     glow?: string | null;
     /** Seconds left on a cooldown: dims the button and sweeps a ring while > 0. */
     cooldown?: number;
+    /** Full length of that cooldown (for the ring). */
+    cooldownMax?: number;
 }
 
-function ActionButton({ action, label, size, right, bottom, color, glow, cooldown = 0 }: ButtonProps) {
+function ActionButton({ action, label, size, right, bottom, color, glow, cooldown = 0, cooldownMax = T.guard.breakCooldown }: ButtonProps) {
     const onCd = cooldown > 0;
     return (
         <button
@@ -127,7 +129,7 @@ function ActionButton({ action, label, size, right, bottom, color, glow, cooldow
                 borderColor: `${color}cc`,
                 boxShadow: glow ? `0 0 calc(var(--u) * 0.05) ${glow}` : 'none',
                 backgroundImage: onCd
-                    ? `conic-gradient(rgba(0,0,0,0) ${(1 - cooldown / T.guard.breakCooldown) * 360}deg, rgba(0,0,0,0.55) 0deg)`
+                    ? `conic-gradient(rgba(0,0,0,0) ${(1 - cooldown / cooldownMax) * 360}deg, rgba(0,0,0,0.55) 0deg)`
                     : undefined,
             }}
             onPointerDown={(e) => {
@@ -165,7 +167,7 @@ function KeyHint({ label, text, glow }: { label: string; text: string; glow?: st
     );
 }
 
-/** The active monster's special name, for the attack button and key hint. */
+/** The active monster's special name, for the SPECIAL button and key hint. */
 function useSpecialName(): string {
     const team = useStore((s) => s.team);
     const active = useStore((s) => s.activeMonster);
@@ -174,15 +176,17 @@ function useSpecialName(): string {
 }
 
 function KeyHints() {
-    const specialReady = useStore((s) => s.specialReady);
+    const transReady = useStore((s) => s.transReady);
+    const specialCd = useStore((s) => s.specialCd);
     const specialName = useSpecialName();
     const trans = useStore((s) => s.trans);
     return (
         <div className="pointer-events-none absolute bottom-[calc(var(--u)*0.05)] right-[calc(var(--u)*0.05)] flex flex-col items-end gap-[calc(var(--u)*0.025)]">
-            <KeyHint label={specialReady ? 'J' : 'J'} text={specialReady ? specialName : 'Claw'} glow={specialReady ? '#f59e0b' : null} />
+            <KeyHint label="J" text="Claw" />
+            <KeyHint label="E" text={specialCd > 0 ? `${specialName} ${Math.ceil(specialCd)}s` : specialName} glow={specialCd > 0 ? null : '#f59e0b'} />
             <KeyHint label="Space" text="Dodge" glow={store.get().perfectReady ? '#2dd4bf88' : null} />
             <KeyHint label="L" text="Guard / Counter" />
-            <KeyHint label="Q" text={specialReady ? 'TRANSFORM' : 'Transform (full bar)'} glow={specialReady && !trans ? '#e879f988' : null} />
+            <KeyHint label="Q" text={transReady ? 'TRANSFORM' : 'Transform (full bar)'} glow={transReady && !trans ? '#e879f988' : null} />
             <KeyHint label="1 / 2 / 3" text="Swap" />
             <KeyHint label="M" text="Sound" />
         </div>
@@ -190,7 +194,9 @@ function KeyHints() {
 }
 
 export default function Controls() {
-    const specialReady = useStore((s) => s.specialReady);
+    const transReady = useStore((s) => s.transReady);
+    const specialCd = useStore((s) => s.specialCd);
+    const specialCdMax = useStore((s) => s.specialCdMax);
     const perfectReady = useStore((s) => s.perfectReady);
     const gameOver = useStore((s) => s.gameOver);
     const inputMode = useStore((s) => s.inputMode);
@@ -202,14 +208,17 @@ export default function Controls() {
     return (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-safe-bottom" style={{ height: '36%' }}>
             <Joystick />
+            <ActionButton action="attack" label="CLAW" size={0.24} right={0.05} bottom={0.09} color="#f59e0b" glow={null} />
             <ActionButton
-                action="attack"
-                label={specialReady ? specialName : 'CLAW'}
-                size={0.24}
-                right={0.05}
-                bottom={0.09}
-                color="#f59e0b"
-                glow={specialReady ? '#f59e0b' : null}
+                action="special"
+                label={specialCd > 0 ? String(Math.ceil(specialCd)) : specialName}
+                size={0.15}
+                right={0.31}
+                bottom={0.27}
+                color="#fb923c"
+                glow={specialCd > 0 ? null : '#fb923c'}
+                cooldown={specialCd}
+                cooldownMax={specialCdMax}
             />
             <ActionButton
                 action="dodge"
@@ -237,7 +246,7 @@ export default function Controls() {
                 right={0.5}
                 bottom={0.03}
                 color="#e879f9"
-                glow={specialReady && !trans ? '#e879f9' : null}
+                glow={transReady && !trans ? '#e879f9' : null}
             />
         </div>
     );
