@@ -29,9 +29,9 @@ const CAM = {
 };
 
 /** Character heights in meters. */
-const HUNTER_HEIGHT = 1.7;
+export const HUNTER_HEIGHT = 1.7;
 /** Height above 1 for heroes that should read bigger (the vampire stays lean). */
-const HERO_HEIGHTS = { werewolf: 1.85, vampire: 1.7, stitched: 2.3 } as const;
+export const HERO_HEIGHTS = { werewolf: 1.85, vampire: 1.7, stitched: 2.3 } as const;
 
 const MAX_DT = 1 / 20;
 

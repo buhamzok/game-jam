@@ -167,6 +167,11 @@ const MONSTER_ANIMS: Record<string, HeroAnims> = {
     stitched: STITCHED_ANIMS,
 };
 
+/** A monster's idle clip, for the title-screen lineup. */
+export function heroIdle(kind: MonsterKind): AnimSpec {
+    return (MONSTER_ANIMS[kind] ?? WEREWOLF_ANIMS).idle;
+}
+
 /** Signature glow per monster when the special is ready. */
 const READY_GLOW: Record<MonsterKind, number> = { werewolf: C.wolf, vampire: C.counter, stitched: C.rod };
 

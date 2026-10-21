@@ -77,3 +77,15 @@ body {
 @utility pb-safe-bottom {
     padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
 }
+
+/* Title screen: a soft glow on the logo, and a slow pulse on FIGHT. */
+.title-glow {
+    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.85), 0 0 24px rgba(245, 158, 11, 0.45);
+}
+@keyframes fight-pulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.12); }
+}
+.fight-pulse {
+    animation: fight-pulse 1.8s ease-in-out infinite;
+}
