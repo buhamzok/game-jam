@@ -24,6 +24,7 @@ import type { Hunter, HunterKind } from '../hunter.ts';
 import { CharacterView, type AnimSpec } from './characterView.ts';
 import { U } from './fx3d.ts';
 import { BatSwarm, type SwarmShape } from './bats.ts';
+import { WolfForm } from './wolfForm.ts';
 
 /** Sim facing (radians, y down) to three.js rotation.y for a model that faces +Z. */
 export function yawFromFacing(facing: number): number {
@@ -178,6 +179,8 @@ export class HeroView {
     private swingSerial = 0;
     /** 0..1, eases in while transformed: black wolf, red Stitched. */
     private transBlend = 0;
+    /** Full Moon: red eyes and silver claws on the Werewolf's bones. */
+    private readonly wolfForm: WolfForm | null;
     /** Equipped skin's idle aura (black/0 for the classic look). */
     private skinGlow = 0x000000;
     private skinGlowAmount = 0;
@@ -214,6 +217,7 @@ export class HeroView {
         this.char.root.add(this.parry);
         this.swarm = kind === 'vampire' ? new BatSwarm() : null;
         if (this.swarm) this.char.root.add(this.swarm.group);
+        this.wolfForm = kind === 'werewolf' ? new WolfForm(this.char.model) : null;
     }
 
     /** Speed a clip so its impact frame arrives `hitTime` seconds after it starts. */
@@ -328,6 +332,7 @@ export class HeroView {
         if (this.kind === 'werewolf') {
             c.setSize(1 + (T.trans.werewolf.scale - 1) * blend);
             c.setTint(0x000000, blend);
+            this.wolfForm?.set(blend);
         } else if (this.kind === 'stitched') {
             c.setTint(0xff2020, 0.45 * blend);
         }
@@ -352,6 +357,7 @@ export class HeroView {
         this.parry.geometry.dispose();
         this.parryMat.dispose();
         this.swarm?.dispose();
+        this.wolfForm?.dispose();
         this.char.dispose();
     }
 }
