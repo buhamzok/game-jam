@@ -31,6 +31,8 @@ export interface AnimSpec {
     start?: number;
     /** Crossfade time in seconds. */
     fade?: number;
+    /** Looping clips: play only this part (fractions), back and forth, e.g. the calm stretch of a busy idle. */
+    range?: [number, number];
 }
 
 let shadowTexture: CanvasTexture | null = null;
@@ -69,6 +71,7 @@ export class CharacterView {
     private readonly shadow: Mesh;
     private current: AnimationAction | null = null;
     private currentKey = '';
+    private currentRange: [number, number] | null = null;
     private flashColor = new Color();
     /** Material colors as loaded, so tints can be undone. */
     private readonly baseColors: Color[] = [];
@@ -134,6 +137,8 @@ export class CharacterView {
         next.clampWhenFinished = !spec.loop;
         next.timeScale = spec.speed ?? 1;
         if (spec.start) next.time = spec.start * next.getClip().duration;
+        if (spec.range) next.time = spec.range[0] * next.getClip().duration;
+        this.currentRange = spec.range ?? null;
         next.setEffectiveWeight(1);
         next.play();
         if (prev && prev !== next) next.crossFadeFrom(prev, spec.fade ?? 0.1, false);
@@ -154,6 +159,19 @@ export class CharacterView {
     /** Advance animations. Pass 0 to freeze the pose (hitstop). */
     update(dt: number): void {
         this.mixer.update(dt);
+        // ping-pong inside the clip's range
+        const a = this.current;
+        const r = this.currentRange;
+        if (a && r) {
+            const dur = a.getClip().duration;
+            if (a.timeScale > 0 && a.time >= r[1] * dur) {
+                a.time = r[1] * dur;
+                a.timeScale = -Math.abs(a.timeScale);
+            } else if (a.timeScale < 0 && a.time <= r[0] * dur) {
+                a.time = r[0] * dur;
+                a.timeScale = Math.abs(a.timeScale);
+            }
+        }
     }
 
     /** Tint toward `color` by `amount` (0..1) through emissive light. */

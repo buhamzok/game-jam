@@ -65,6 +65,8 @@ interface HeroAnims {
     entry: HitAnim;
     hurt: AnimSpec;
     dead: AnimSpec;
+    /** Playback speed of a combo clip after its hit frame (default: keep the windup speed). */
+    follow?: number;
 }
 
 /** KayKit skeleton stand-in. */
@@ -137,7 +139,10 @@ const VAMPIRE_ANIMS: HeroAnims = {
  * 320 units/s (3.2 m/s) without sliding.
  */
 const STITCHED_ANIMS: HeroAnims = {
-    idle: { clip: 'idle', loop: true },
+    // the idle clip opens with a turn-away and an overhead flex; only its last stretch is a calm stance
+    idle: { clip: 'idle', loop: true, range: [0.6, 0.98], speed: 0.8, fade: 0.22 },
+    // after the blow lands, the swing follows through at this speed instead of the sped-up windup speed
+    follow: 1.15,
     run: { clip: 'run', loop: true, speed: 3.4 },
     combo: [
         { clip: 'hook', start: 0.394, impact: 0.443, fade: 0.04 },
@@ -250,7 +255,10 @@ export class HeroView {
         switch (p.state) {
             case 'idle': c.play(A.idle); break;
             case 'move': c.play(A.run); break;
-            case 'attack': c.play(A.combo[p.combo], `swing-${this.swingSerial}`); break;
+            case 'attack':
+                c.play(A.combo[p.combo], `swing-${this.swingSerial}`);
+                if (A.follow && p.st >= T.monsters[this.kind].combo[p.combo].windup) c.setSpeed(A.follow);
+                break;
             case 'dodge': c.play(p.dodgeBackward ? A.dodgeBack : A.dodge); break;
             case 'guard': c.play(A.guard); break;
             case 'counter': c.play(A.counter); break;
