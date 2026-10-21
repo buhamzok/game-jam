@@ -74,6 +74,8 @@ export interface HunterKindDef {
     ranged?: { attack: EnemyAttackDef; keepMin: number; keepMax: number };
     /** Boss body: two melee attacks (light sweep, armored heavy smash) plus a ground quake. */
     boss?: boolean;
+    /** PVP rival: a monster from another player's team, played by the AI (see T.rival). */
+    rival?: boolean;
 }
 
 /** One member of the tag team, driving the shared player body when active. */
@@ -101,7 +103,7 @@ export interface MonsterDef {
 }
 
 export type MonsterKind = 'werewolf' | 'vampire' | 'stitched';
-export type HunterKind = 'knight' | 'barbarian' | 'rogue' | 'mage' | 'boss';
+export type HunterKind = 'knight' | 'barbarian' | 'rogue' | 'mage' | 'boss' | 'rival';
 
 export const T = {
     /** Shared body movement speed scale; each monster multiplies in its own speed. */
@@ -285,6 +287,8 @@ export const T = {
          },
          // radius matches the 3.2 m golem model so nobody stands inside it
          boss: { hp: 620, poise: 150, speed: 135, radius: 92, boss: true },
+         // a rival monster's base body; T.rival.monsters scales it per monster
+         rival: { hp: 260, poise: 80, speed: 230, radius: 38, rival: true },
      } as Record<HunterKind, HunterKindDef>,
      boss: {
         /** Deadzone: the player may hug its legs, but its swings cover far ahead. */
@@ -319,6 +323,40 @@ export const T = {
         /** Its death: every hunter left crumbles; the team heals this fraction of max hp. */
         killHeal: 0.35,
     },
+    /**
+     * PVP rivals: another player's monsters, one on the field at a time, played
+     * by the AI. Red jab, purple heavy (counter it), guards, and a special per
+     * monster. A hurt rival may tag out once to the next teammate.
+     */
+    rival: {
+        jab: { heavy: false, windup: 0.5, active: 0.08, recover: 0.45, range: 140, arcDeg: 90, dmg: 12, lunge: 60 } as EnemyAttackDef,
+        heavy: { heavy: true, windup: 0.75, active: 0.12, recover: 0.7, range: 175, arcDeg: 70, dmg: 22, lunge: 110 } as EnemyAttackDef,
+        heavyChance: 0.35,
+        cooldownMin: 0.55,
+        cooldownMax: 1.15,
+        /** Every N moves, the monster's special (Moon Pounce leap, Bat Storm circle, Thunder Quake circle). */
+        specialEvery: 4,
+        specials: {
+            werewolf: { style: 'leap', heavy: false, windup: 1.0, active: 0.12, recover: 0.8, range: 900, arcDeg: 0, dmg: 24, lunge: 0, radius: 165 },
+            vampire: { style: 'blast', heavy: true, windup: 1.05, active: 0.1, recover: 0.7, range: 900, arcDeg: 0, dmg: 20, lunge: 0, radius: 150 },
+            stitched: { style: 'blast', heavy: true, windup: 1.35, active: 0.12, recover: 0.9, range: 900, arcDeg: 0, dmg: 28, lunge: 0, radius: 230 },
+        } as Record<MonsterKind, EnemyAttackDef>,
+        /** Per monster: hp and speed multipliers on T.hunterKinds.rival. */
+        monsters: {
+            werewolf: { hp: 1, speed: 1.1 },
+            vampire: { hp: 0.85, speed: 1.2 },
+            stitched: { hp: 1.35, speed: 0.8 },
+        } as Record<MonsterKind, { hp: number; speed: number }>,
+        /** Below this hp fraction a rival with a teammate waiting may tag out (once each). */
+        tagOutAt: 0.35,
+        tagOutChance: 0.6,
+        /** Team power scales rival hp: hp *= clamp(power / yours, lo, hi). */
+        powerScale: [0.8, 1.3] as [number, number],
+        /** Souls for a win and a loss. */
+        winSouls: 40,
+        lossSouls: 10,
+    },
+
     /** Reflected bolts (parried) fly back this much faster and hit for this. */
     reflect: { speedMult: 1.3, dmg: 30, poise: 40 },
 

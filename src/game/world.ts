@@ -16,7 +16,9 @@ import { Hunter, wrapAngle, type HunterKind, type WaveMods } from './hunter.ts';
 import { store } from '../state/store.ts';
 import type { SfxName } from './audio.ts';
 import { SOULS } from './skins.ts';
-import { REALMS, PORTAL, type RealmDef } from './realms.ts';
+import { REALMS, PORTAL, BLOOD_PIT, type RealmDef } from './realms.ts';
+import type { RivalSpec } from './hunter.ts';
+import { teamPower, type Rival } from '../sdk/pvp.ts';
 
 /** Each monster's pain voice, transformation voice and swing. */
 const HURT_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfHurt', vampire: 'vampHurt', stitched: 'stitchHurt' };
@@ -107,10 +109,100 @@ export class World {
         boss: '' as string,
     };
 
+    /** 'hunt' = waves and realms; 'pvp' = the Blood Pit against another player's team. */
+    readonly mode: 'hunt' | 'pvp';
+    /** PVP: the rival team, its monsters still to come, and the countdown to the next one. */
+    private rivalTeam: Rival | null = null;
+    private rivalQueue: (RivalSpec & { tagged?: boolean })[] = [];
+    private rivalTimer = 0;
+
     constructor(readonly fx: Fx) {
+        const s = store.get();
+        this.mode = s.mode === 'pvp' && s.rival ? 'pvp' : 'hunt';
+        if (this.mode === 'pvp') {
+            this.realm = BLOOD_PIT;
+            this.rivalTeam = s.rival;
+            const mult = Math.max(T.rival.powerScale[0], Math.min(T.rival.powerScale[1], s.rival!.power / teamPower(s.bestWave)));
+            this.rivalQueue = s.rival!.units.map((u) => ({ monster: u.monster, skin: u.skin, hpMult: mult }));
+            this.rivalTimer = 2.2;
+        }
         this.player = new Player(this);
-        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false });
+        this.player.y = this.realm.arena.h * 0.22;
+        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null });
+        if (this.mode === 'pvp') {
+            const r = s.rival!;
+            store.patch({ banner: `VS ${r.name.toUpperCase()}`, bannerSub: r.bot ? 'A bot team (no rival found yet)' : `Their tag team, played by the AI` });
+            this.bannerTimer = T.waves.bannerTime + 0.6;
+            this.fx.sound('bell');
+            this.fx.sound('vo_fight', { delay: 1.6 });
+        }
         this.syncHud();
+    }
+
+    // ---- pvp ----------------------------------------------------------------
+
+    /** PVP: when the rival on the field falls or tags out, the next comes in; none left is a win. */
+    private updatePvp(dt: number): void {
+        if (this.bannerTimer > 0) {
+            this.bannerTimer -= dt;
+            if (this.bannerTimer <= 0) store.patch({ banner: '', bannerSub: '' });
+        }
+        if (this.hunters.length > 0) return;
+        if (this.rivalQueue.length === 0) {
+            this.pvpEnd(true);
+            return;
+        }
+        this.rivalTimer -= dt;
+        if (this.rivalTimer > 0) return;
+        this.spawnRival(this.rivalQueue.shift()!);
+    }
+
+    private spawnRival(spec: RivalSpec & { tagged?: boolean }): void {
+        const b = this.bounds(44);
+        const x = Math.max(b.x0, Math.min(b.x1, (Math.random() - 0.5) * 300));
+        const y = Math.max(b.y0, -this.realm.arena.h * 0.2);
+        const h = new Hunter(this, x, y, 'rival', undefined, spec);
+        if (spec.tagged) h.taggedOut = true;
+        this.hunters.push(h);
+        const name = this.rivalTeam!.name.toUpperCase();
+        store.patch({ banner: T.monsters[spec.monster].name.toUpperCase(), bannerSub: `${name} tags in` });
+        this.bannerTimer = T.waves.bannerTime;
+        this.fx.ring(x, y, 10, 220, C.blood, 12, 0.6);
+        this.fx.burst(x, y, C.blood, 20, 420, 7, 0.5);
+        this.fx.sound('swap');
+        this.fx.sound(TRANS_VOICE[spec.monster], { delay: 0.2, volume: 0.8 });
+    }
+
+    /** A hurt rival tags out (keeps its hp) when a teammate is waiting. */
+    rivalTagOut(h: Hunter): boolean {
+        if (this.mode !== 'pvp' || !h.rival || this.rivalQueue.length === 0) return false;
+        this.rivalQueue.push({ ...h.rival, hp: h.hp, tagged: true });
+        h.state = 'dead';
+        h.removable = true;
+        this.fx.text(h.x, h.y - 70, 'TAG OUT!', C.blood, 38, 0.9);
+        this.fx.burst(h.x, h.y, C.blood, 18, 380, 7, 0.45);
+        this.fx.ring(h.x, h.y, h.r, h.r * 3, C.blood, 8, 0.35);
+        this.rivalTimer = 0.35;
+        return true;
+    }
+
+    /** PVP over: a win or a loss, Souls, and the report to the server's check. */
+    private pvpEnd(win: boolean): void {
+        this.over = true;
+        this.witching = 0;
+        const souls = win ? T.rival.winSouls : T.rival.lossSouls;
+        if (win) {
+            this.fx.sound('bell');
+            this.fx.sound('vo_flawless', { delay: 0.4 });
+            this.fx.flash(0xfde68a, 0.4);
+        } else {
+            this.fx.sound('gameOver');
+            this.fx.sound('vo_gameover', { delay: 0.9 });
+        }
+        store.patch({ gameOver: true, pvpResult: win ? 'win' : 'loss', finalWave: 0, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls });
+        void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
+        const rival = this.rivalTeam!;
+        void import('../sdk/pvp.ts').then((p) => p.reportBattle(win, rival)).catch(() => undefined);
     }
 
     // ---- queries -----------------------------------------------------------
@@ -783,7 +875,8 @@ export class World {
         this.bigMoveTimer = Math.max(0, this.bigMoveTimer - realDt);
         this.rainCd = Math.max(0, this.rainCd - realDt);
         this.rod = Math.max(0, this.rod - realDt);
-        this.updateWaves(realDt);
+        if (this.mode === 'pvp') this.updatePvp(realDt);
+        else this.updateWaves(realDt);
         this.syncHud();
     }
 
@@ -1050,6 +1143,10 @@ export class World {
     }
 
     private gameOver(): void {
+        if (this.mode === 'pvp') {
+            this.pvpEnd(false);
+            return;
+        }
         this.over = true;
         this.fx.sound('gameOver');
         this.fx.sound('vo_gameover', { delay: 0.9 });
@@ -1064,6 +1161,9 @@ export class World {
         // on the RUN daily board. Never blocks or throws into the sim.
         void import('../sdk/dailyHunt.ts')
             .then((h) => Promise.all([h.submitRun(this.wave, this.clock, this.kills), h.telemetry('run_end', { wave: this.wave, kills: this.kills, seconds: Math.round(this.clock), realm: this.realm.id }), h.fetchDailyBoard()]))
+            // then save the team for PVP rivals (best wave is up to date by now)
+            .then(() => import('../sdk/pvp.ts'))
+            .then((p) => p.snapshotTeam())
             .catch(() => undefined);
     }
 
@@ -1071,8 +1171,8 @@ export class World {
         const p = this.player;
         const u = p.unit();
         const teamKey = `${p.active}|${p.team.map((m) => `${Math.ceil(m.hp)}|${m.alive}`).join('|')}`;
-        const boss = this.hunters.find((h) => h.def.boss);
-        const bossKey = boss && boss.alive ? `${Math.ceil(boss.hp)}|${boss.hpMax}|${boss.phase}` : '';
+        const boss = this.hunters.find((h) => (h.def.boss || h.rival) && h.alive);
+        const bossKey = boss ? `${Math.ceil(boss.hp)}|${boss.hpMax}|${boss.phase}|${boss.rival?.monster ?? ''}|${this.rivalQueue.length}` : '';
         const next = {
             hp: Math.ceil(u.hp),
             energy: Math.floor(u.energy),
@@ -1133,7 +1233,15 @@ export class World {
                 transLabel: next.trans ? T.trans[u.kind].label : '',
                 team: p.team.map((m) => ({ kind: m.kind, hp: Math.ceil(m.hp), hpMax: T.monsters[m.kind].hp, alive: m.alive })),
                 bossHp: next.boss
-                    ? { frac: Math.max(0, Math.ceil(Number(next.boss.split('|')[0])) / Number(next.boss.split('|')[1])), name: boss!.phase === 2 ? 'GRAVELORD · ENRAGED' : 'GRAVELORD', mark: T.boss.enrageAt }
+                    ? {
+                          frac: Math.min(1, Math.max(0, Number(next.boss.split('|')[0]) / Number(next.boss.split('|')[1]))),
+                          name: boss!.rival
+                              ? `${T.monsters[boss!.rival.monster].name.toUpperCase()}${this.rivalQueue.length ? ` +${this.rivalQueue.length}` : ''}`
+                              : boss!.phase === 2
+                                ? 'GRAVELORD · ENRAGED'
+                                : 'GRAVELORD',
+                          mark: boss!.rival ? undefined : T.boss.enrageAt,
+                      }
                     : null,
             });
         }

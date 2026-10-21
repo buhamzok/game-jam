@@ -10,7 +10,7 @@ import { fetchDailyBoard } from '../sdk/dailyHunt.ts';
 
 function fight() {
     audio.play('click');
-    store.patch({ phase: 'playing', gameOver: false });
+    store.patch({ phase: 'playing', mode: 'hunt', gameOver: false });
 }
 
 /** The 3D lineup behind the menu; it falls back to the plain night color if WebGL fails. */
@@ -152,6 +152,18 @@ export default function MainMenu() {
                         onClick={fight}
                     >
                         {challenge ? 'ACCEPT' : 'FIGHT'}
+                    </button>
+
+                    <button
+                        type="button"
+                        className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-rose-500 to-rose-700 py-2.5 font-black text-white shadow-[0_4px_0_#881337] transition-transform active:translate-y-0.5"
+                        onClick={() => {
+                            audio.play('click');
+                            store.patch({ phase: 'pvp', rival: null });
+                        }}
+                    >
+                        <span className="text-lg tracking-wider">{'\u2694'} PVP ARENA</span>
+                        <span className="text-[11px] text-rose-100/80">fight a rival team</span>
                     </button>
 
                     <div className="grid grid-cols-2 gap-2.5">

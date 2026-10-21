@@ -186,6 +186,9 @@ export default function Hud() {
     const challengeBeaten = useStore((s) => s.challengeBeaten);
     const soulsEarned = useStore((s) => s.soulsEarned);
     const realmName = useStore((s) => s.realmName);
+    const pvpResult = useStore((s) => s.pvpResult);
+    const mode = useStore((s) => s.mode);
+    const rival = useStore((s) => s.rival);
     const portalOpen = useStore((s) => s.portalOpen);
     const souls = useStore((s) => s.souls);
     const [shareState, setShareState] = useState<'idle' | 'busy' | 'shared' | 'copied' | 'failed'>('idle');
@@ -221,7 +224,7 @@ export default function Hud() {
                     )}
                     <div className="flex justify-between gap-2 text-xs font-bold text-white/70 tabular-nums">
                         <span className="min-w-0 truncate">
-                            Wave {wave}
+                            {mode === 'pvp' ? `VS ${rival?.name ?? 'RIVAL'}` : `Wave ${wave}`}
                             {realmName && <span className="ml-1.5 text-[10px] font-black tracking-wider text-violet-300/80">{realmName.replace(/^THE /, '')}</span>}
                         </span>
                         <span className="shrink-0">KOs {kills}</span>
@@ -290,7 +293,53 @@ export default function Hud() {
                 </div>
             )}
 
-            {gameOver && (
+            {gameOver && mode === 'pvp' && (
+                <div className="pointer-events-auto absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black/75 px-10 text-center">
+                    <p className={`text-6xl font-black italic tracking-wide ${pvpResult === 'win' ? 'text-amber-300' : 'text-rose-400'}`}>{pvpResult === 'win' ? 'VICTORY' : 'DEFEAT'}</p>
+                    <p className="text-lg font-bold text-white/80">
+                        {pvpResult === 'win' ? `You beat ${rival?.name ?? 'your rival'}'s tag team` : `${rival?.name ?? 'Your rival'}'s team wins this one`}
+                        {rival?.bot ? ' (bot)' : ''}
+                    </p>
+                    {soulsEarned > 0 && (
+                        <p className="text-sm font-black text-violet-200 tabular-nums">
+                            {'\u{1F47B}'} +{soulsEarned} Souls ({souls} total)
+                        </p>
+                    )}
+                    <button
+                        type="button"
+                        className="w-60 rounded-2xl bg-gradient-to-b from-rose-400 to-rose-600 py-3.5 text-xl font-black text-white shadow-[0_5px_0_#881337] active:translate-y-1"
+                        onClick={() => {
+                            audio.play('click');
+                            const s = store.get();
+                            store.patch({ runId: s.runId + 1, gameOver: false });
+                        }}
+                    >
+                        REMATCH
+                    </button>
+                    <button
+                        type="button"
+                        className="w-60 rounded-xl bg-white/10 py-2.5 text-base font-black text-white ring-1 ring-white/15 active:scale-95"
+                        onClick={() => {
+                            audio.play('click');
+                            store.patch({ phase: 'pvp', rival: null, gameOver: false });
+                        }}
+                    >
+                        NEW RIVAL
+                    </button>
+                    <button
+                        type="button"
+                        className="text-sm font-bold text-white/60 underline"
+                        onClick={() => {
+                            audio.play('click');
+                            store.patch({ phase: 'menu', gameOver: false, mode: 'hunt' });
+                        }}
+                    >
+                        Menu
+                    </button>
+                </div>
+            )}
+
+            {gameOver && mode !== 'pvp' && (
                 <div className="pointer-events-auto absolute inset-0 flex flex-col items-center justify-center gap-6 bg-black/70 px-10">
                     <p className="text-5xl font-black tracking-wide text-red-400">HUNTED</p>
                     <p className="text-lg font-bold text-white/80 tabular-nums">

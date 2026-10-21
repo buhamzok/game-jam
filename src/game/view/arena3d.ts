@@ -173,7 +173,8 @@ export class Arena3D {
             this.line(-hw, -hh - 0.4, hw, -hh - 0.4, 1.1, grave, () => (rand() - 0.5) * 0.3);
             this.line(-hw - 0.4, -hh, -hw - 0.4, hh, 1.1, grave, () => Math.PI / 2 + (rand() - 0.5) * 0.3);
             this.line(hw + 0.4, -hh, hw + 0.4, hh, 1.1, grave, () => -Math.PI / 2 + (rand() - 0.5) * 0.3);
-            this.line(-hw, hh + 0.3, hw, hh + 0.3, 1.8, () => (rand() < 0.5 ? 'candle_triple' : 'skull'), () => rand() * 6);
+            // the near edge stays low and sparse: props right under the camera look huge
+            this.line(-hw, hh + 0.4, hw, hh + 0.4, 2.6, () => 'candle_triple', () => rand() * 6, () => 0.7);
             for (const [x, z] of [[-hw - m, -hh - m], [hw + m, -hh - m], [-hw - m, hh + m], [hw + m, hh + m]]) this.place('fence_pillar', x, z);
             return;
         }
@@ -204,9 +205,9 @@ export class Arena3D {
             const name = th.outsideProps[Math.floor(rand() * th.outsideProps.length)];
             this.place(name, x, z, rand() * Math.PI * 2, 0.8 + rand() * 0.5);
         }
-        // low props along the near edge
+        // low props along the near edge (small: they sit right under the camera)
         for (let i = 0; i < 10; i++) {
-            this.place(th.nearProps[i % th.nearProps.length], (rand() * 2 - 1) * (hw + 2), hh + 0.8 + rand() * 1.5, rand() * Math.PI * 2);
+            this.place(th.nearProps[i % th.nearProps.length], (rand() * 2 - 1) * (hw + 2), hh + 0.8 + rand() * 1.5, rand() * Math.PI * 2, 0.75);
         }
         // lantern clusters by the corners (lit by the point lights)
         for (const sx of [-1, 1]) {

@@ -178,5 +178,22 @@ const BLOOD_MOON_CRYPT: RealmDef = {
 
 export const REALMS: RealmDef[] = [GRAVEYARD, HOLLOW_WOODS, PUMPKIN_PATCH, BLOOD_MOON_CRYPT];
 
+/** The PVP arena: a sunken pit ringed with graves and candles under a blood moon, no obstacles. */
+export const BLOOD_PIT: RealmDef = {
+    id: 'pit',
+    name: 'THE BLOOD PIT',
+    sub: 'Tag team against tag team',
+    arena: { w: 1200, h: 1500 },
+    obstacles: [],
+    theme: {
+        ...BLOOD_MOON_CRYPT.theme,
+        night: 0x12040a,
+        fog: 0.03,
+        floor: ['#45262c', ['#552e36', '#331a20', '#64363e', '#3d2a26']],
+        border: 'graves',
+        landmark: { prop: 'arch_gate', scale: 1.8 },
+    },
+};
+
 /** Portal: how close the player must get to step through, sim units. */
 export const PORTAL = { radius: 85, banner: 2.4 };

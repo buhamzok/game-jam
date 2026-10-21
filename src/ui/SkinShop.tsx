@@ -27,7 +27,7 @@ function back() {
 }
 
 /** The monster's portrait with the skin color laid over it. */
-function Swatch({ kind, skin, selected }: { kind: MonsterKind; skin?: SkinDef; selected: boolean }) {
+export function Swatch({ kind, skin, selected }: { kind: MonsterKind; skin?: SkinDef; selected: boolean }) {
     return (
         <div className={`relative h-14 w-14 overflow-hidden rounded-xl ${selected ? 'ring-2 ring-amber-400' : 'ring-1 ring-white/20'}`}>
             <img src={PORTRAITS[kind]} alt="" className="h-full w-full object-cover" draggable={false} />

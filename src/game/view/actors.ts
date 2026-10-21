@@ -410,8 +410,23 @@ const BOSS_ANIMS: HunterAnims = {
     leapImpact: 0.43,
 };
 
+/** PVP rivals: a monster model on the shared Meshy rig, played like a hunter. Run speed and idle come per monster. */
+const RIVAL_ANIMS: HunterAnims = {
+    idle: { clip: 'idle', loop: true },
+    run: { clip: 'run', loop: true },
+    jab: { clip: 'hook', fade: 0.06 },
+    heavy: { clip: 'slam', fade: 0.06 },
+    jabImpact: 0.443,
+    heavyImpact: 0.594,
+    // ranged specials (Bat Storm, Thunder Quake): a braced cast while the circle tracks, then the slam
+    aim: { clip: 'guard', loop: true, speed: 1.4, fade: 0.1 },
+    leap: { clip: 'pounce', fade: 0.08 },
+    leapImpact: 0.43,
+};
+
 const HUNTER_ANIMS: Record<HunterKind, HunterAnims> = {
     boss: BOSS_ANIMS,
+    rival: RIVAL_ANIMS,
     knight: {
         idle: { clip: 'Idle', loop: true },
         run: { clip: 'Running_A', loop: true },
@@ -464,6 +479,13 @@ const COMMON = {
 
 /** Per-kind overrides for the shared hunter moments (the boss has its own clips). */
 const COMMON_OVERRIDE: Partial<Record<HunterKind, Partial<{ spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec; roar: AnimSpec; guard: AnimSpec }>>> = {
+    rival: {
+        spawn: { clip: 'trans', loop: false, speed: 1.4 / T.hunter.spawnTime, fade: 0.05 },
+        flinch: { clip: 'hit', speed: 1.4, fade: 0.06 },
+        broken: { clip: 'hit', speed: 0.5, fade: 0.05 },
+        dead: { clip: 'dead', speed: 1.0, fade: 0.08 },
+        guard: { clip: 'guard', loop: true, fade: 0.08 },
+    },
     boss: {
         guard: { clip: 'guard', loop: true, fade: 0.1 },
         // the entrance roars the transform clip; the death is its Knock_Down
@@ -534,9 +556,22 @@ export class HunterView {
     private serial = 0;
     private lastState = '';
 
-    constructor(gltf: GLTF, scale: number, readonly kind: HunterKind) {
-        this.char = new CharacterView(gltf, scale, kind === 'boss' ? 0.35 : 0.5);
+    /** PVP rivals: a red ring under the feet marks the enemy team. */
+    private readonly enemyRing: Mesh | null = null;
+
+    constructor(gltf: GLTF, scale: number, readonly kind: HunterKind, rival?: { monster: MonsterKind; skin?: SkinDef; runScale: number }) {
+        this.char = new CharacterView(gltf, scale, kind === 'boss' ? 0.35 : rival ? 0.65 : 0.5);
         this.anims = HUNTER_ANIMS[kind];
+        if (rival) {
+            const hero = MONSTER_ANIMS[rival.monster] ?? WEREWOLF_ANIMS;
+            this.anims = { ...RIVAL_ANIMS, idle: hero.idle, run: { ...hero.run, speed: (hero.run.speed ?? 1) * rival.runScale } };
+            if (rival.skin) this.char.setSkin(rival.skin.tint, rival.skin.amount);
+            const ringMat = new MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0.75, blending: AdditiveBlending, depthWrite: false });
+            this.enemyRing = new Mesh(new RingGeometry(0.62, 0.74, 40), ringMat);
+            this.enemyRing.rotation.x = -Math.PI / 2;
+            this.enemyRing.position.y = 0.04;
+            this.char.root.add(this.enemyRing);
+        }
         this.common = commonFor(kind);
         this.coneFull = new Mesh(sliceGeometry(0.5), this.fullMat);
         this.coneFill = new Mesh(sliceGeometry(0.5), this.fillMat);
@@ -597,7 +632,7 @@ export class HunterView {
                     if (leap) {
                         const speed = ((a.leapImpact ?? 0.5) * c.clipDuration(spec.clip)) / h.atk.windup;
                         c.play({ ...spec, speed }, this.attackKey);
-                    } else if (a.aim) {
+                    } else if (a.aim && (h.atk.style === 'bolt' || h.atk.style === 'blast' || !a.jabImpact)) {
                         c.play(a.aim, this.attackKey);
                     } else {
                         // one clip per melee attack: slow it so the weapon connects exactly when the windup ends
@@ -607,7 +642,7 @@ export class HunterView {
                     }
                 } else if (h.state !== 'windup') {
                     if (leap) c.setSpeed(1);
-                    else if (a.aim) c.play(spec, `${this.attackKey}-release`);
+                    else if (a.aim && (h.atk.style === 'bolt' || h.atk.style === 'blast' || !a.jabImpact)) c.play(spec, `${this.attackKey}-release`);
                     else c.setSpeed(1.2);
                 }
                 break;
@@ -731,6 +766,10 @@ export class HunterView {
         this.teleRoot.removeFromParent();
         for (const m of [this.coneFull, this.coneFill, this.lineFull, this.lineFill, this.circleEdge, this.circleFill, this.shield]) m.geometry.dispose();
         this.shieldMat.dispose();
+        if (this.enemyRing) {
+            this.enemyRing.geometry.dispose();
+            (this.enemyRing.material as MeshBasicMaterial).dispose();
+        }
         this.fullMat.dispose();
         this.fillMat.dispose();
         this.stars.children.forEach((s) => (s as Mesh).geometry.dispose());

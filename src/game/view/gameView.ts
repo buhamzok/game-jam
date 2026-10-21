@@ -69,7 +69,8 @@ export class GameView {
         // one scale for every KayKit asset, taken from the knight, keeps props and people in proportion
         const kaykitScale = HUNTER_HEIGHT / modelHeight(getModel('knight'));
         const scaleFor = (key: ModelKey, height: number) => height / modelHeight(getModel(key));
-        this.scales = { knight: kaykitScale, barbarian: scaleFor('barbarian', HUNTER_HEIGHT), rogue: kaykitScale, mage: kaykitScale, boss: scaleFor('bossgolem', 3.2) };
+        // rival scales come per monster (heroScale below)
+        this.scales = { knight: kaykitScale, barbarian: scaleFor('barbarian', HUNTER_HEIGHT), rogue: kaykitScale, mage: kaykitScale, boss: scaleFor('bossgolem', 3.2), rival: 1 };
 
         this.kaykitScale = kaykitScale;
         this.world = new World(this.fx);
@@ -174,7 +175,16 @@ export class GameView {
             alive.add(h.id);
             let v = this.hunters.get(h.id);
             if (!v) {
-                v = new HunterView(getModel(h.kind === 'boss' ? 'bossgolem' : h.kind), this.scales[h.kind], h.kind);
+                if (h.rival) {
+                    const m = h.rival.monster;
+                    const gltf = getModel(m as ModelKey);
+                    const skin = skinById(h.rival.skin);
+                    // the clip's run speed was matched to the hero's speed; scale it to the rival's
+                    const runScale = (T.hunterKinds.rival.speed * T.rival.monsters[m].speed) / T.monsters[m].speed;
+                    v = new HunterView(gltf, HERO_HEIGHTS[m] / modelHeight(gltf), 'rival', { monster: m, skin, runScale });
+                } else {
+                    v = new HunterView(getModel(h.kind === 'boss' ? 'bossgolem' : (h.kind as ModelKey)), this.scales[h.kind], h.kind);
+                }
                 this.hunters.set(h.id, v);
                 this.scene.add(v.char.root, v.telegraph);
             }

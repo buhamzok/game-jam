@@ -20,8 +20,8 @@ export interface TeamMember {
 
 /** The UI-facing app state. */
 export interface AppState {
-    /** 'loading' → 'menu' → 'playing' (or 'skins', the shop, from the menu) */
-    phase: 'loading' | 'menu' | 'playing' | 'skins';
+    /** 'loading' → 'menu' → 'playing' (or 'skins', the shop, and 'pvp', the arena lobby, from the menu) */
+    phase: 'loading' | 'menu' | 'playing' | 'skins' | 'pvp';
     /** 0..1 progress of the critical-asset warm during 'loading' */
     loadProgress: number;
     /** Set by the host's onPause/onResume lifecycle hooks */
@@ -107,6 +107,11 @@ export interface AppState {
     equippedSkins: Partial<Record<MonsterKind, string>>;
     /** RUN shop prices by item id ("50 Bits", "$0.99"); empty until the catalog loads. */
     shopPrices: Record<string, string>;
+    /** What the next run is: the wave hunt, or a PVP match against `rival`. */
+    mode: 'hunt' | 'pvp';
+    rival: import('../sdk/pvp.ts').Rival | null;
+    /** PVP outcome once the match ends (null while fighting or in the hunt). */
+    pvpResult: 'win' | 'loss' | null;
     /** Current realm (map) name, and whether its exit portal is open. */
     realmName: string;
     portalOpen: boolean;
@@ -173,6 +178,9 @@ let state: AppState = {
     shopPrices: {},
     realmName: '',
     portalOpen: false,
+    mode: 'hunt',
+    rival: null,
+    pvpResult: null,
 };
 
 export const store = {

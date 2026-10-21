@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "pvp_board_power": {
+      "tags": ["pvp", "state"],
+      "stackable": true,
+      "clientViewable": true,
+      "metadata": {
+        "displayName": "PVP team power",
+        "description": "Power of the player's latest tag-team snapshot (from their best wave)."
+      }
+    }
+  },
+  "recipes": {
+    "pvp_snapshot_board": {
+      "duration": 0,
+      "scope": "player",
+      "clientViewable": true,
+      "inputs": {},
+      "outputs": {},
+      "beginEffects": [
+        {
+          "type": "ensure_room",
+          "roomType": "pvp_board",
+          "roomId": "pvp_{{profileId}}",
+          "roomTags": ["pvp", "board_snapshot"],
+          "metadata": { "lastUpdate": { "formula": "now()" } }
+        },
+        { "type": "set", "entity": "pvp_board_power", "value": { "formula": "inputs.totalPower" } },
+        {
+          "type": "replace_room_actors",
+          "roomId": "pvp_{{profileId}}",
+          "clearTag": "board_unit",
+          "actorsInputKey": "inputs.units",
+          "actorTag": "board_unit"
+        }
+      ]
+    },
+    "pvp_find_opponent": {
+      "duration": 0,
+      "scope": "player",
+      "clientViewable": true,
+      "inputs": {},
+      "outputs": {},
+      "endEffects": [
+        { "type": "matchmaking", "params": { "roomType": "pvp_board", "count": 5 }, "as": "opponent_rooms" }
+      ]
+    },
+    "pvp_get_opponent_board": {
+      "duration": 0,
+      "scope": "player",
+      "clientViewable": true,
+      "inputs": {},
+      "outputs": {},
+      "endEffects": [
+        { "type": "get_room_actors", "roomId": "inputs.roomId", "filter": { "hasTag": "board_unit" }, "as": "opponent_units" }
+      ]
+    },
+    "pvp_report_battle": {
+      "duration": 0,
+      "scope": "player",
+      "clientViewable": true,
+      "inputs": {},
+      "outputs": {},
+      "endEffects": [
+        {
+          "type": "validate_battle_outcome",
+          "reportedOutcomeKey": "inputs.result",
+          "attackerPowerKey": "inputs.myPower",
+          "defenderPowerKey": "inputs.opponentPower",
+          "powerVariance": 0.35,
+          "outcomeVariance": 0.45,
+          "onFail": { "rejectRecipe": true, "logAnomaly": true },
+          "as": "validation"
+        }
+      ]
+    }
+  }
+}

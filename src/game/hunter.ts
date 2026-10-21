@@ -16,7 +16,7 @@
  * The boss (Gravelord) never flinches; only a poise break stuns it. At half
  * hp it roars into phase 2: faster attacks, wider quakes and the Grave Leap.
  */
-import { T, DEG, type EnemyAttackDef, type HunterKind, type HunterKindDef } from './tuning.ts';
+import { T, DEG, type EnemyAttackDef, type HunterKind, type HunterKindDef, type MonsterKind } from './tuning.ts';
 import { C } from './fxTypes.ts';
 import type { World } from './world.ts';
 
@@ -41,6 +41,15 @@ export interface WaveMods {
 }
 
 export const NO_MODS: WaveMods = { hp: 1, dmg: 1, speed: 1, windup: 1, cooldown: 1 };
+
+/** A PVP rival: which monster from the other team, its look, and its hp scale from team power. */
+export interface RivalSpec {
+    monster: MonsterKind;
+    skin?: string;
+    hpMult: number;
+    /** Carry-over hp when it tags back in (else full). */
+    hp?: number;
+}
 
 export function wrapAngle(a: number): number {
     while (a > Math.PI) a -= Math.PI * 2;
@@ -105,6 +114,11 @@ export class Hunter {
     private seenSwing = 0;
     /** Bumped on every blocked hit (the view replays the block reaction). */
     blockSerial = 0;
+    /** PVP rival: its monster, look, and whether it already tagged out once. */
+    readonly rival: RivalSpec | null;
+    taggedOut = false;
+    /** The rival's special for its monster. */
+    private special: EnemyAttackDef | null = null;
     /** Boss: seconds until the next Grave Leap is allowed. */
     private leapCd = 0;
     /** Grave Leap: where the jump started, and 0..1 height of the arc right now (the view lifts the body). */
@@ -119,19 +133,23 @@ export class Hunter {
         y: number,
         readonly kind: HunterKind,
         mods: WaveMods = NO_MODS,
+        rival: RivalSpec | null = null,
     ) {
         this.x = x;
         this.y = y;
         this.def = T.hunterKinds[kind];
-        this.r = this.def.radius ?? T.hunter.radius;
-        this.hpMax = this.def.hp * mods.hp;
-        this.hp = this.hpMax;
+        this.rival = rival;
+        const per = rival ? T.rival.monsters[rival.monster] : null;
+        this.r = rival?.monster === 'stitched' ? 44 : this.def.radius ?? T.hunter.radius;
+        this.hpMax = this.def.hp * mods.hp * (per ? per.hp * rival!.hpMult : 1);
+        this.hp = rival?.hp ?? this.hpMax;
         // poise grows at half the hp rate so late waves still break
         this.poiseMax = this.def.poise * (1 + (mods.hp - 1) * 0.5);
         this.poise = this.poiseMax;
-        this.speed = this.def.speed * mods.speed;
-        this.jab = scaleAttack(this.def.boss ? T.boss.sweep : T.hunter.jab, mods);
-        this.heavy = scaleAttack(this.def.boss ? T.boss.smash : T.hunter.heavy, mods);
+        this.speed = this.def.speed * mods.speed * (per ? per.speed : 1);
+        this.jab = scaleAttack(this.def.boss ? T.boss.sweep : rival ? T.rival.jab : T.hunter.jab, mods);
+        this.heavy = scaleAttack(this.def.boss ? T.boss.smash : rival ? T.rival.heavy : T.hunter.heavy, mods);
+        if (rival) this.special = scaleAttack(T.rival.specials[rival.monster], mods);
         this.shot = this.def.ranged ? scaleAttack(this.def.ranged.attack, mods) : null;
         // Boss: quake and leap always exist; their scale comes with the wave like every other attack.
         this.quake = scaleAttack(T.boss.quake, mods);
@@ -185,6 +203,12 @@ export class Hunter {
      */
     private pickMove(dist: number): EnemyAttackDef | null {
         if (this.shot) return this.shot;
+        if (this.rival) {
+            // every few moves its monster's special, from any distance; otherwise close in and strike
+            if (this.special && this.bossMoves >= T.rival.specialEvery - 1) return this.special;
+            const melee = Math.random() < T.rival.heavyChance ? this.heavy : this.jab;
+            return dist <= melee.range ? melee : null;
+        }
         if (!this.def.boss) return Math.random() < T.hunter.heavyChance ? this.heavy : this.jab;
         if (this.bossMoves >= (this.phase === 2 ? T.boss.p2QuakeEvery : T.boss.quakeEvery)) return this.quake;
         // phase 2: a player who keeps their distance gets leapt on
@@ -236,13 +260,13 @@ export class Hunter {
                         this.w.fx.sound('mageCast', { x: this.x });
                         if (this.def.boss) this.w.fx.sound('rumble', { x: this.x, volume: 0.7 });
                     } else if (this.atk.style === 'leap') {
-                        this.leapCd = T.boss.leapCooldown;
+                        this.leapCd = this.rival ? 0 : T.boss.leapCooldown;
                         this.leapStarted = false;
                         this.w.fx.sound('growl', { x: this.x });
                     } else if (this.atk.heavy) this.w.fx.sound('heavyTell', { x: this.x });
                     this.whooshed = false;
                     // quake fires every few moves, then the sweep/smash alternation starts over
-                    if (atk === this.quake) this.bossMoves = 0;
+                    if (atk === this.quake || (this.rival && atk === this.special)) this.bossMoves = 0;
                     else if (atk !== this.leap) this.bossMoves++;
                     this.aimX = p.x;
                     this.aimY = p.y;
@@ -298,8 +322,8 @@ export class Hunter {
             }
             case 'recover':
                 if (this.st >= (this.atk?.recover ?? 0.5)) {
-                    const lo = this.def.boss ? T.boss.cooldownMin : T.hunter.cooldownMin;
-                    const hi = this.def.boss ? T.boss.cooldownMax : T.hunter.cooldownMax;
+                    const lo = this.def.boss ? T.boss.cooldownMin : this.rival ? T.rival.cooldownMin : T.hunter.cooldownMin;
+                    const hi = this.def.boss ? T.boss.cooldownMax : this.rival ? T.rival.cooldownMax : T.hunter.cooldownMax;
                     const base = lo + Math.random() * (hi - lo);
                     this.cooldown = base * this.cooldownMult + (this.shot ? 0.5 : 0);
                     this.atk = null;
@@ -359,8 +383,10 @@ export class Hunter {
         const g = T.hunter.guard;
         if (p.swingId === this.seenSwing) return false;
         this.seenSwing = p.swingId;
-        if (!this.canGuard || this.guardCd > 0 || dist > g.range || this.w.waveNumber() < g.fromWave) return false;
-        const chance = Math.min(g.chanceMax, g.chance + g.chancePerWave * this.w.waveNumber());
+        if (!this.canGuard || this.guardCd > 0 || dist > g.range) return false;
+        if (!this.rival && this.w.waveNumber() < g.fromWave) return false;
+        // rivals guard like a mid-run hunter
+        const chance = this.rival ? 0.3 : Math.min(g.chanceMax, g.chance + g.chancePerWave * this.w.waveNumber());
         if (Math.random() >= chance) return false;
         this.guardBlocks = 0;
         this.atk = null;
@@ -494,6 +520,12 @@ export class Hunter {
             this.enrage();
             return false;
         }
+        // a hurt rival may tag out to a waiting teammate (once)
+        if (this.rival && !this.taggedOut && this.hp <= this.hpMax * T.rival.tagOutAt) {
+            // one chance per monster
+            this.taggedOut = true;
+            if (Math.random() < T.rival.tagOutChance && this.w.rivalTagOut(this)) return false;
+        }
         // a grunt on some hits, never a chorus
         if (dmg > 0 && this.voiceCd <= 0 && Math.random() < 0.45) {
             this.voiceCd = 0.8;
@@ -509,8 +541,8 @@ export class Hunter {
                 this.w.fx.text(this.x, this.y - 40, 'BREAK!', C.counter, 40, 0.9);
                 this.w.fx.sound('poiseBreak', { x: this.x });
                 this.w.fx.ring(this.x, this.y, this.r, this.r * 3, C.counter, 8, 0.35);
-            } else if (this.def.boss) {
-                // the Gravelord has hyper armor: only a poise break stops it
+            } else if (this.def.boss || (this.rival && Math.random() < 0.6)) {
+                // the Gravelord has hyper armor, and a rival shrugs off most hits: only a poise break stops them
             } else if (this.state === 'windup' && this.atk && !this.atk.heavy) {
                 // light windups are interrupted, heavy ones have armor
                 this.atk = null;
