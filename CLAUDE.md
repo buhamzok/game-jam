@@ -18,7 +18,11 @@ The simulation is 2D and renderer-free (sim units, y down, 100 units = 1 m); thr
 - **input.ts**: buffered actions shared by touch controls (`src/ui/Controls.tsx`) and keyboard (WASD, J claw, K dodge, L guard).
 - **view/**: three.js. `gameView.ts` (renderer, 3/4 camera, game loop, `step(dt)`), `actors.ts` (sim state to animation clips, transformation looks, telegraph cones, aim lines and circles), `bats.ts` (instanced bat swarm), `bolts.ts` (crossbow bolts), `characterView.ts` (skinned clone, mixer, glow), `fx3d.ts` (particles, arcs, rings, text sprites), `arena3d.ts` (realm arena: ground, border, obstacles, props, lights), `portal3d.ts` (the realm portal), `assets.ts` (GLB loading via RUN CDN or local fallback).
 - Time: real time for camera/text, sim time is 0 during hitstop, enemy time is slowed during Witching Hour.
-- RUN features in `src/sdk/`: `dailyHunt.ts` (leaderboard, streak), `challenge.ts` (challenge links via `app.resolveLaunchIntent()`), `skinShop.ts` (Souls, entitlements, purchases).
+- RUN features in `src/sdk/`: `dailyHunt.ts` (leaderboard, streak), `challenge.ts` (challenge links via `app.resolveLaunchIntent()`), `skinShop.ts` (Souls, entitlements, purchases), `pvp.ts` (async PVP: team snapshot, matchmaking, report; server recipes in `rundot/simulation/pvp-system.json`).
+- PVP: `world.mode === 'pvp'` runs the Blood Pit (`BLOOD_PIT` in realms.ts) against `store.rival`; rival monsters are `Hunter` kind `'rival'` (T.rival), drawn with the monster models in `HunterView`.
+- Controls: J claw, E special (cooldown, `T.monsters[k].specialCooldown`), Q transform (only Q spends the energy bar).
+- Title screen: `view/menuScene.ts` renders the 3D lineup behind `ui/MainMenu.tsx`. Full Moon extras (red eyes, silver claws): `view/wolfForm.ts`.
+- Trailer: `trailer/` (Remotion; see its README). Video skills are installed in `.claude/skills/` (remotion-*, explainer-*, sound-effects, motion-broll).
 - `NO_PLAYGROUND=1 npm run dev` skips the RUN sign-in for headless browser tests; `?beat=7&from=Jo` fakes a challenge.
 - Dev only: `window.__ttt = { view, world, input, audio }`, `window.__store`. With the browser pane hidden, rAF stops, so test by calling `view.step(1/60)` from the console.
 

@@ -26,7 +26,14 @@ A 3D monster tag-team brawler for the [RUN October Jam](https://run.world/jams/o
 - Three monsters with their own move sets, specials and transformations, plus tag-team combos (Crimson Rain, Lightning Rod).
 - Knights, barbarians, crossbow rogues and mages, getting stronger every wave.
 - The Gravelord boss: hyper armor, a phase 2 at half health (roar, summons, Grave Leap) and a big payoff when it falls.
+- Hunters raise blue shields now and then: break them with a finisher or a special, or hit from behind.
+- Four realms: every boss opens a portal to the next map.
+- PVP Arena: fight another player's saved tag team (their monsters, in their skins, played by the AI), using RUN's async PVP.
 - Daily Hunt leaderboard and streak, challenge links to beat a friend's wave, and a skin shop (Souls earned in runs, RUN Bits, or an all-skins bundle).
+
+## Trailer
+
+`trailer/` is a Remotion project that captures gameplay from the game and renders a 32-second promo in 16:9 and 9:16. See `trailer/README.md`.
 
 ## Run it locally
 

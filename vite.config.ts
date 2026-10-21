@@ -68,6 +68,8 @@ export default defineConfig({
     plugins: [react(), rundotGameLibrariesPlugin(), ...(process.env.NO_PLAYGROUND ? [] : [rundotGamePlaygroundPlugin()]), tailwindcss(), soundBoardPicks()],
     server: {
         allowedHosts: true,
+        // raw art sources and the trailer project are not part of the game: do not watch them
+        watch: { ignored: ['**/art/**', '**/trailer/**'] },
     },
     build: {
         // Top-level await in the boot path (and in the SDK) needs a modern target.
