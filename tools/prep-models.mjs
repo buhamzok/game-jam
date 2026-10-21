@@ -2,9 +2,10 @@
  * Builds the game's model files from the KayKit source packs (CC0).
  *
  * Each character keeps only the animations and accessory meshes the game
- * uses, which cuts files from ~4 MB to a fraction of that. Graveyard props
- * are merged into one props.glb (one shared texture), one top-level node per
- * prop, named after the source file.
+ * uses, which cuts files from ~4 MB to a fraction of that. Realm props
+ * (Halloween Bits, plus Dungeon Remastered ones prefixed `d_`) are merged
+ * into one props.glb, one top-level node per prop, named after the source
+ * file. Packs: github.com/KayKit-Game-Assets (CC0).
  *
  * Usage: node tools/prep-models.mjs [path-to-game-assets]
  * Set ONLY=rogue,mage (output names, or props) to rebuild just those files.
@@ -24,6 +25,13 @@ fs.mkdirSync(out, { recursive: true });
 const ADV = path.join(root, 'KayKit-Character-Pack-Adventures-1.0/addons/kaykit_character_pack_adventures/Characters/gltf');
 const SKL = path.join(root, 'KayKit-Character-Pack-Skeletons-1.0/addons/kaykit_character_pack_skeletons/Characters/gltf');
 const HAL = path.join(root, 'KayKit-Halloween-Bits-1.0/addons/kaykit_halloween_bits/Assets/gltf');
+const DUN = path.join(root, 'KayKit-Dungeon-Remastered-1.0/addons/kaykit_dungeon_remastered/Assets/gltf');
+/** Source file of a prop: `d_` names come from the Dungeon pack (some ship as plain .glb), the rest from Halloween Bits. */
+const propFile = (name) => {
+    if (!name.startsWith('d_')) return path.join(HAL, `${name}.gltf`);
+    const base = path.join(DUN, name.slice(2));
+    return fs.existsSync(`${base}.gltf.glb`) ? `${base}.gltf.glb` : `${base}.glb`;
+};
 
 const CHARACTERS = [
     {
@@ -70,6 +78,15 @@ const PROPS = [
     'tree_dead_small', 'fence', 'fence_broken', 'fence_pillar', 'pumpkin_orange_jackolantern', 'pumpkin_yellow_jackolantern',
     'pumpkin_orange_small', 'lantern_standing', 'post_lantern', 'skull', 'bone_A', 'ribcage', 'crypt', 'coffin',
     'candle_triple', 'shrine_candles', 'arch_gate', 'floor_dirt_grave',
+    // realms 5 to 10 (Halloween Bits; the heaviest decorated variants are left out to keep the file small)
+    'tree_pine_orange_large', 'tree_pine_orange_medium', 'tree_pine_orange_small', 'tree_pine_yellow_large',
+    'tree_pine_yellow_medium', 'tree_pine_yellow_small', 'pumpkin_orange', 'pumpkin_yellow', 'pumpkin_yellow_small',
+    'shrine', 'plaque_candles', 'pillar', 'arch', 'post', 'post_skull', 'fence_seperate', 'fence_seperate_broken',
+    'fence_pillar_broken', 'grave_A_destroyed', 'skull_candle', 'bone_B', 'bone_C', 'candle_melted', 'path_A', 'path_B',
+    'path_D',
+    // realms 5 to 10 (Dungeon Remastered)
+    'd_wall', 'd_wall_half', 'd_pillar', 'd_column', 'd_barrier', 'd_barrier_half', 'd_barrier_column', 'd_barrel_large',
+    'd_torch_lit', 'd_torch_mounted', 'd_banner_patternA_red', 'd_banner_triple_red', 'd_rubble_half', 'd_sword_shield',
 ];
 
 await MeshoptEncoder.ready;
@@ -120,7 +137,7 @@ for (const c of CHARACTERS) {
 
 if (wanted('props')) {
     // Props: merge every prop into one document, one scene, one node per prop.
-    const props = await io.read(path.join(HAL, `${PROPS[0]}.gltf`));
+    const props = await io.read(propFile(PROPS[0]));
     const scene = props.getRoot().getDefaultScene() ?? props.getRoot().listScenes()[0];
     const wrap = (doc, sceneOfDoc, name) => {
         const holder = doc.createNode(name);
@@ -132,7 +149,7 @@ if (wanted('props')) {
     };
     scene.addChild(wrap(props, scene, PROPS[0]));
     for (const name of PROPS.slice(1)) {
-        const src = await io.read(path.join(HAL, `${name}.gltf`));
+        const src = await io.read(propFile(name));
         const map = mergeDocuments(props, src);
         const srcScene = src.getRoot().listScenes()[0];
         const merged = map.get(srcScene);

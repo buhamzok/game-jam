@@ -73,6 +73,8 @@ export class World {
     realmVersion = 0;
     /** The portal after a boss wave: open until the player steps in. */
     portal: { x: number; y: number; t: number } | null = null;
+    /** A health potion by the portal (50% of portals), until picked up or left behind. */
+    potion: { x: number; y: number } | null = null;
     private waveTimer: number = T.waves.delay;
     private bannerTimer = 0;
     /** Seconds left of the Crimson Rain opportunity window after a big move. */
@@ -1151,11 +1153,25 @@ export class World {
         x = Math.max(b.x0, Math.min(b.x1, x));
         this.portal = { x, y, t: 0 };
         const next = this.nextRealm();
+        // half the portals leave a health potion a few steps in front (toward the player's side)
+        this.potion = null;
+        if (Math.random() < T.potion.chance) {
+            const P = T.potion;
+            let px = x;
+            let py = Math.min(b.y1, y + P.distance);
+            for (let i = 0; i < 8 && !this.clearOfObstacles(px, py, P.radius); i++) px = x + (i % 2 ? 1 : -1) * 120 * Math.ceil((i + 1) / 2);
+            this.potion = { x: Math.max(b.x0, Math.min(b.x1, px)), y: py };
+        }
         this.fx.ring(x, y, 20, 260, C.heavy, 14, 0.8);
         this.fx.burst(x, y, C.counter, 30, 520, 8, 0.7);
         this.fx.sound('witching', { delay: 0.6 });
         this.fx.sound('bell', { delay: 1.4 });
-        store.patch({ banner: 'A PORTAL OPENS', bannerSub: `Step in to reach ${next.name.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())}`, portalOpen: true });
+        const nextName = next.name.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+        store.patch({
+            banner: 'A PORTAL OPENS',
+            bannerSub: this.potion ? `A health potion lies by it. Step in to reach ${nextName}` : `Step in to reach ${nextName}`,
+            portalOpen: true,
+        });
         this.bannerTimer = T.waves.bannerTime + 2;
     }
 
@@ -1163,8 +1179,24 @@ export class World {
         const pt = this.portal!;
         pt.t += dt;
         const p = this.player;
+        if (this.potion && p.alive && Math.hypot(p.x - this.potion.x, p.y - this.potion.y) <= T.potion.radius + p.r) this.drinkPotion();
         if (!p.alive || pt.t < 0.8) return;
         if (Math.hypot(p.x - pt.x, p.y - pt.y) <= PORTAL.radius) this.enterRealm();
+    }
+
+    /** Walk over the potion: every monster still standing heals a share of its max HP. */
+    private drinkPotion(): void {
+        const pot = this.potion!;
+        this.potion = null;
+        const p = this.player;
+        for (const m of p.team) if (m.alive) m.hp = Math.min(p.maxHp(m.kind), m.hp + p.maxHp(m.kind) * T.potion.heal);
+        const pct = Math.round(T.potion.heal * 100);
+        this.fx.text(p.x, p.y - 100, `+${pct}% HP`, C.rod, 40, 1.4);
+        this.fx.ring(pot.x, pot.y, 20, 200, 0xff4050, 12, 0.6);
+        this.fx.burst(pot.x, pot.y, 0xff6070, 22, 420, 7, 0.6);
+        this.fx.burst(p.x, p.y, C.rod, 16, 300, 6, 0.6);
+        this.fx.sound('parry', { volume: 0.8 });
+        this.fx.flash(0x22c55e, 0.18);
     }
 
     /** Step through: new map, player at the near end, waves carry on after a beat. */
@@ -1175,6 +1207,8 @@ export class World {
         this.realm = REALMS[this.realmIndex % REALMS.length];
         this.realmVersion++;
         this.portal = null;
+        // a potion left behind stays behind
+        this.potion = null;
         this.bolts = [];
         this.pending = [];
         const p = this.player;

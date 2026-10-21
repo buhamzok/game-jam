@@ -18,6 +18,7 @@ import { BoltsView } from './bolts.ts';
 import { modelHeight } from './characterView.ts';
 import { skinById } from '../skins.ts';
 import { PortalView } from './portal3d.ts';
+import { PotionView } from './potion3d.ts';
 const CAM = {
     fov: 42,
     /** Camera offset from its target, meters. */
@@ -45,6 +46,7 @@ export class GameView {
     private readonly kaykitScale: number;
     private shownRealm = 0;
     private readonly portal = new PortalView();
+    private readonly potion = new PotionView();
     /** One mirror view per team member; only the active monster is visible. */
     private readonly heroes: HeroView[] = [];
     private readonly hunters = new Map<number, HunterView>();
@@ -76,7 +78,7 @@ export class GameView {
         this.world = new World(this.fx);
         this.arena = new Arena3D(this.scene, kaykitScale, this.world.realm);
         this.shownRealm = this.world.realmVersion;
-        this.scene.add(this.fx.group, this.bolts.group, this.portal.group);
+        this.scene.add(this.fx.group, this.bolts.group, this.portal.group, this.potion.group);
         for (const kind of this.world.player.team.map((m) => m.kind)) {
             const height = HERO_HEIGHTS[kind as keyof typeof HERO_HEIGHTS] ?? HERO_HEIGHTS.werewolf;
             const hero = new HeroView(kind, getModel(kind as ModelKey), scaleFor(kind as ModelKey, height));
@@ -137,6 +139,7 @@ export class GameView {
         this.world.update(realDt);
         if (this.world.realmVersion !== this.shownRealm) this.changeRealm();
         this.portal.update(this.world.portal, realDt);
+        this.potion.update(this.world.potion, realDt);
         this.fx.listenerX = this.world.player.x;
         const animDt = realDt * this.world.simScale();
         const enemyAnimDt = animDt * (this.world.witching > 0 ? T.witching.enemyTimeScale : 1);
@@ -242,6 +245,7 @@ export class GameView {
         this.hunters.clear();
         this.bolts.dispose();
         this.portal.dispose();
+        this.potion.dispose();
         for (const h of this.heroes) h.dispose();
         this.fx.dispose();
         this.arena.dispose();

@@ -23,19 +23,77 @@ import {
     type Object3D,
     type Scene,
 } from 'three';
-import type { RealmDef } from '../realms.ts';
+import type { FloorPattern, RealmDef } from '../realms.ts';
 import { getModel } from './assets.ts';
 import { U } from './fx3d.ts';
 import { seeded } from './random.ts';
 
-function groundTexture(base: string, speckles: string[], seed: number): CanvasTexture {
+function groundTexture(base: string, speckles: string[], seed: number, pattern: FloorPattern = 'speckle'): CanvasTexture {
     const c = document.createElement('canvas');
     c.width = c.height = 256;
     const g = c.getContext('2d')!;
     g.fillStyle = base;
     g.fillRect(0, 0, 256, 256);
     const rand = seeded(seed);
-    for (let i = 0; i < 900; i++) {
+    if (pattern === 'tiles') {
+        // stone flags: each tile a shade off the base, dark grout between, a few cracks
+        const n = 4;
+        const t = 256 / n;
+        for (let ty = 0; ty < n; ty++) {
+            // odd rows shift half a tile; start one tile early so the row wraps without a gap
+            for (let tx = ty % 2 ? -1 : 0; tx < n; tx++) {
+                const off = ty % 2 ? t / 2 : 0;
+                g.fillStyle = speckles[Math.floor(rand() * speckles.length)];
+                g.globalAlpha = 0.55 + rand() * 0.3;
+                g.fillRect(tx * t + off + 3, ty * t + 3, t - 6, t - 6);
+            }
+        }
+        g.globalAlpha = 1;
+        g.strokeStyle = 'rgba(0,0,0,0.55)';
+        g.lineWidth = 4;
+        for (let ty = 0; ty <= n; ty++) {
+            g.beginPath();
+            g.moveTo(0, ty * t);
+            g.lineTo(256, ty * t);
+            g.stroke();
+            for (let tx = 0; tx <= n; tx++) {
+                const x = tx * t + (ty % 2 ? t / 2 : 0);
+                g.beginPath();
+                g.moveTo(x % 256, ty * t);
+                g.lineTo(x % 256, ty * t + t);
+                g.stroke();
+            }
+        }
+        g.lineWidth = 1.5;
+        g.strokeStyle = 'rgba(0,0,0,0.35)';
+        for (let i = 0; i < 10; i++) {
+            let x = rand() * 256;
+            let y = rand() * 256;
+            g.beginPath();
+            g.moveTo(x, y);
+            for (let k = 0; k < 4; k++) {
+                x += (rand() - 0.5) * 30;
+                y += (rand() - 0.5) * 30;
+                g.lineTo(x, y);
+            }
+            g.stroke();
+        }
+    }
+    if (pattern === 'leaves') {
+        // fallen leaves: small rotated ovals in autumn colors
+        for (let i = 0; i < 260; i++) {
+            g.save();
+            g.translate(rand() * 256, rand() * 256);
+            g.rotate(rand() * Math.PI);
+            g.fillStyle = speckles[Math.floor(rand() * speckles.length)];
+            g.globalAlpha = 0.3 + rand() * 0.35;
+            g.beginPath();
+            g.ellipse(0, 0, 3 + rand() * 4, 1.5 + rand() * 2, 0, 0, Math.PI * 2);
+            g.fill();
+            g.restore();
+        }
+    }
+    for (let i = 0; i < (pattern === 'speckle' ? 900 : 300); i++) {
         g.fillStyle = speckles[Math.floor(rand() * speckles.length)];
         g.globalAlpha = 0.25 + rand() * 0.35;
         const s = 1 + rand() * 4;
@@ -82,7 +140,7 @@ export class Arena3D {
         ground.rotation.x = -Math.PI / 2;
         this.group.add(ground);
 
-        const dirt = groundTexture(th.floor[0], th.floor[1], 11 + seed);
+        const dirt = groundTexture(th.floor[0], th.floor[1], 11 + seed, th.pattern);
         dirt.repeat.set(realm.arena.w / 200, realm.arena.h / 200);
         const floor = new Mesh(new PlaneGeometry(hw * 2, hh * 2), new MeshStandardMaterial({ map: dirt, roughness: 1 }));
         floor.rotation.x = -Math.PI / 2;
@@ -100,13 +158,14 @@ export class Arena3D {
             lamp.position.set(sx * (hw + 0.9), 1.0, hh - 1.2);
             this.group.add(lamp);
         }
-        // big glowing pumpkins light the patch from inside
-        if (th.border === 'pumpkins') {
-            for (const o of realm.obstacles.slice(0, 4)) {
-                const l = new PointLight(th.lamp, 4, 5, 1.6);
-                l.position.set(o.x * U, 1.1, o.y * U);
-                this.group.add(l);
-            }
+        // big glowing pumpkins light the patch from inside; torches, shrines and candles light theirs
+        const lit = th.border === 'pumpkins' ? [0, 1, 2, 3] : (th.litObstacles ?? []);
+        for (const i of lit.slice(0, 4)) {
+            const o = realm.obstacles[i];
+            if (!o) continue;
+            const l = new PointLight(th.lamp, 4, 5, 1.6);
+            l.position.set(o.x * U, 1.4, o.y * U);
+            this.group.add(l);
         }
         scene.add(this.group);
     }
@@ -178,6 +237,76 @@ export class Arena3D {
             for (const [x, z] of [[-hw - m, -hh - m], [hw + m, -hh - m], [-hw - m, hh + m], [hw + m, hh + m]]) this.place('fence_pillar', x, z);
             return;
         }
+        if (style === 'pines') {
+            // a thick autumn pine wall on three sides; low pumpkins on the near side
+            const pine = () => ['tree_pine_orange_large', 'tree_pine_yellow_large', 'tree_pine_orange_medium', 'tree_pine_yellow_medium'][Math.floor(rand() * 4)];
+            const yaw = () => rand() * Math.PI * 2;
+            const size = () => 0.5 + rand() * 0.25;
+            this.line(-hw - 0.4, -hh - 0.9, hw + 0.4, -hh - 0.9, 1.3, pine, yaw, size);
+            this.line(-hw - 0.9, -hh, -hw - 0.9, hh, 1.3, pine, yaw, size);
+            this.line(hw + 0.9, -hh, hw + 0.9, hh, 1.3, pine, yaw, size);
+            this.line(-hw, hh + 0.4, hw, hh + 0.4, 1.0, () => (rand() < 0.5 ? 'pumpkin_yellow_small' : 'pumpkin_orange_small'), yaw);
+            return;
+        }
+        if (style === 'posts') {
+            // skull posts with low rails between, lantern posts at every third
+            const seg = this.lengthX('fence_seperate');
+            const rail = () => (rand() < 0.2 ? 'fence_seperate_broken' : 'fence_seperate');
+            this.line(-hw, -hh - m, hw, -hh - m, seg, rail, () => 0);
+            this.line(-hw - m, -hh, -hw - m, hh, seg, rail, () => Math.PI / 2);
+            this.line(hw + m, -hh, hw + m, hh, seg, rail, () => Math.PI / 2);
+            const post = (i: number) => (i % 3 === 0 ? 'post_lantern' : 'post_skull');
+            this.line(-hw - m, -hh, -hw - m, hh, seg * 2, post, () => Math.PI / 2);
+            this.line(hw + m, -hh, hw + m, hh, seg * 2, post, () => -Math.PI / 2);
+            this.line(-hw, -hh - m, hw, -hh - m, seg * 2, post, () => 0);
+            this.line(-hw, hh + 0.4, hw, hh + 0.4, 2.4, () => 'candle_melted', () => rand() * 6, () => 0.9);
+            return;
+        }
+        if (style === 'barriers') {
+            // stone barriers with columns, bones heaped along the near edge
+            const seg = this.lengthX('d_barrier');
+            const piece = () => (rand() < 0.25 ? 'd_barrier_half' : 'd_barrier');
+            this.line(-hw, -hh - m, hw, -hh - m, seg, piece, () => 0);
+            this.line(-hw - m, -hh, -hw - m, hh, seg, piece, () => Math.PI / 2);
+            this.line(hw + m, -hh, hw + m, hh, seg, piece, () => Math.PI / 2);
+            for (const [x, z] of [[-hw - m, -hh - m], [hw + m, -hh - m], [-hw - m, hh + m], [hw + m, hh + m]]) this.place('d_barrier_column', x, z);
+            this.line(-hw, hh + 0.4, hw, hh + 0.4, 1.0, () => ['bone_A', 'bone_B', 'bone_C', 'skull'][Math.floor(rand() * 4)], () => rand() * 6);
+            return;
+        }
+        if (style === 'walls') {
+            // a stone hall: full wall at the far end with mounted torches, half walls on the sides
+            // (low enough not to hide the fight), low barriers on the near edge
+            const seg = this.lengthX('d_wall');
+            this.line(-hw, -hh - 0.3, hw, -hh - 0.3, seg, () => 'd_wall', () => 0);
+            const half = this.lengthX('d_wall_half');
+            this.line(-hw - 0.3, -hh, -hw - 0.3, hh, half, () => 'd_wall_half', () => Math.PI / 2);
+            this.line(hw + 0.3, -hh, hw + 0.3, hh, half, () => 'd_wall_half', () => -Math.PI / 2);
+            this.line(-hw, hh + 0.4, hw, hh + 0.4, this.lengthX('d_barrier_half'), () => 'd_barrier_half', () => 0);
+            for (const x of [-hw * 0.5, hw * 0.5]) {
+                const t = this.place('d_torch_mounted', x, -hh - 0.05, 0);
+                if (t) t.position.y = 1.2;
+                const l = new PointLight(this.realm.theme.lamp, 5, 6, 1.6);
+                l.position.set(x, 1.8, -hh + 0.4);
+                this.group.add(l);
+            }
+            if (this.realm.id === 'keep') {
+                for (const x of [-hw * 0.75, 0, hw * 0.75]) {
+                    const b = this.place('d_banner_triple_red', x, -hh - 0.05, 0);
+                    if (b) b.position.y = 0.4;
+                }
+            }
+            return;
+        }
+        if (style === 'pillars') {
+            // a ring of standing stones with melted candles between
+            const stone = () => (rand() < 0.15 ? 'fence_pillar_broken' : 'pillar');
+            const yaw = () => rand() * Math.PI * 2;
+            this.line(-hw, -hh - 0.5, hw, -hh - 0.5, 1.6, stone, yaw, () => 0.8);
+            this.line(-hw - 0.5, -hh, -hw - 0.5, hh, 1.6, stone, yaw, () => 0.8);
+            this.line(hw + 0.5, -hh, hw + 0.5, hh, 1.6, stone, yaw, () => 0.8);
+            this.line(-hw, hh + 0.4, hw, hh + 0.4, 1.6, () => 'candle_melted', () => rand() * 6);
+            return;
+        }
         // pumpkins: jack-o'-lanterns and lantern posts all around
         const pumpkin = (i: number) => (i % 4 === 0 ? 'post_lantern' : rand() < 0.5 ? 'pumpkin_orange_jackolantern' : 'pumpkin_yellow_jackolantern');
         const face = (toward: number) => () => toward + (rand() - 0.5) * 0.6;
@@ -210,10 +339,16 @@ export class Arena3D {
             this.place(th.nearProps[i % th.nearProps.length], (rand() * 2 - 1) * (hw + 2), hh + 0.8 + rand() * 1.5, rand() * Math.PI * 2, 0.75);
         }
         // lantern clusters by the corners (lit by the point lights)
+        const corners = th.corners ?? { near: ['pumpkin_orange_jackolantern', 'pumpkin_yellow_jackolantern'], far: 'lantern_standing' };
         for (const sx of [-1, 1]) {
-            this.place('pumpkin_orange_jackolantern', sx * (hw + 0.9), hh - 1.2, sx * 0.4);
-            this.place('pumpkin_yellow_jackolantern', sx * (hw + 1.4), hh - 0.5, sx * 0.8, 0.8);
-            this.place('lantern_standing', sx * (hw + 0.8), -hh + 1.5, 0);
+            this.place(corners.near[0], sx * (hw + 0.9), hh - 1.2, sx * 0.4);
+            this.place(corners.near[1], sx * (hw + 1.4), hh - 0.5, sx * 0.8, 0.8);
+            this.place(corners.far, sx * (hw + 0.8), -hh + 1.5, 0);
+        }
+        // a stone road down the middle
+        if (th.road) {
+            const step = this.lengthX(th.road[0]) * 0.95;
+            this.line(0, hh - 0.2, 0, -hh + 0.2, step, () => th.road![Math.floor(rand() * th.road!.length)], () => Math.floor(rand() * 4) * (Math.PI / 2));
         }
         // a little debris inside the fight area, flat enough not to block the view
         for (let i = 0; i < 8; i++) {

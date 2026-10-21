@@ -371,6 +371,8 @@ export const T = {
         boss: 104,
         mass: { player: 3, hunter: 1, rival: 1.5, boss: 8 },
     },
+    /** A health potion may wait by each realm portal: `chance` of one, healing every monster still standing by `heal` of its max HP. */
+    potion: { chance: 0.5, heal: 0.3, radius: 60, distance: 230 },
     /** Blood on hits: hits under minDamage (bat nibbles, auras) stay clean; amount = dmg / damagePerUnit, capped. */
     gore: { minDamage: 5, damagePerUnit: 14, maxAmount: 2.5 },
 
