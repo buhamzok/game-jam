@@ -499,6 +499,12 @@ export class Player {
         if (this.st >= p.duration + p.recover) this.enter('idle');
     }
 
+    /** Shove the body without hurting it (the Gravelord's roar). */
+    push(angle: number, amount: number): void {
+        this.kvx += Math.cos(angle) * amount;
+        this.kvy += Math.sin(angle) * amount;
+    }
+
     /** Called by World for a hit that got through. */
     takeHit(dmg: number, fromAngle: number): void {
         const u = this.unit();

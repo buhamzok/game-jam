@@ -59,7 +59,8 @@ export interface AppState {
     /** HP of every team member for the portrait bars. */
     team: TeamMember[];
     /** Boss health bar (null when no boss is on the field). */
-    bossHp: { frac: number; name: string } | null;
+    /** `mark`: hp fraction where phase 2 starts (a notch on the bar). */
+    bossHp: { frac: number; name: string; mark?: number } | null;
     wave: number;
     kills: number;
     /** Big centered text such as "WAVE 2"; empty when hidden. */

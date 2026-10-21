@@ -359,6 +359,9 @@ interface HunterAnims {
     /** Fraction of each melee attack clip where the weapon connects. */
     jabImpact: number;
     heavyImpact: number;
+    /** Boss Grave Leap: one clip timed so the landing frame meets the end of the windup. */
+    leap?: AnimSpec;
+    leapImpact?: number;
 }
 
 /** The Gravelord: same 24-bone Meshy rig as the monsters, so clip names slot straight in. */
@@ -372,6 +375,9 @@ const BOSS_ANIMS: HunterAnims = {
     heavyImpact: 0.594,
     /** Quake windup: the cast pose loops (the circle telegraph tracks the player); the release replays the heavy slam. */
     aim: { clip: 'cast', loop: true, fade: 0.1 },
+    // Jump_and_Slam: crouch, take off at 0.16, land at 0.43 (measured from the hips)
+    leap: { clip: 'pounce', fade: 0.08 },
+    leapImpact: 0.43,
 };
 
 const HUNTER_ANIMS: Record<HunterKind, HunterAnims> = {
@@ -422,17 +428,19 @@ const COMMON = {
 };
 
 /** Per-kind overrides for the shared hunter moments (the boss has its own clips). */
-const COMMON_OVERRIDE: Partial<Record<HunterKind, Partial<{ spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec }>>> = {
+const COMMON_OVERRIDE: Partial<Record<HunterKind, Partial<{ spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec; roar: AnimSpec }>>> = {
     boss: {
         // the entrance roars the transform clip; the death is its Knock_Down
         spawn: { clip: 'trans', loop: false, speed: 0.4, fade: 0.05 },
+        // phase 2 roar: the same clip, played over the roar time
+        roar: { clip: 'trans', loop: false, speed: 1.4 / T.boss.roar.time, fade: 0.08 },
         flinch: { clip: 'hit', speed: 1.1, fade: 0.07 },
         broken: { clip: 'hit', speed: 0.5, fade: 0.05 },
         dead: { clip: 'dead', speed: 0.8, fade: 0.08 },
     },
 };
 
-const commonFor = (kind: HunterKind) => ({ ...COMMON, ...(COMMON_OVERRIDE[kind] ?? {}) });
+const commonFor = (kind: HunterKind) => ({ ...COMMON, roar: COMMON.spawn, ...(COMMON_OVERRIDE[kind] ?? {}) });
 
 /** Unit pie slice in the XZ plane, pointing along +X, `half` radians each side. */
 function sliceGeometry(half: number): CircleGeometry {
@@ -466,7 +474,7 @@ const teleMaterial = () => new MeshBasicMaterial({ transparent: true, depthWrite
 export class HunterView {
     readonly char: CharacterView;
     private readonly anims: HunterAnims;
-    private readonly common: { spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec };
+    private readonly common: { spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec; roar: AnimSpec };
     /** World-space telegraphs (not rotated with the body): melee cone, aim line, blast circle. */
     private readonly teleRoot = new Group();
     private readonly cone = new Group();
@@ -540,10 +548,14 @@ export class HunterView {
             case 'active':
             case 'recover': {
                 if (!h.atk) break;
-                const spec = h.atk.heavy ? a.heavy : a.jab;
+                const leap = h.atk.style === 'leap' && a.leap;
+                const spec = leap ? a.leap! : h.atk.heavy ? a.heavy : a.jab;
                 if (h.state === 'windup' && this.attackKey !== `atk-${this.serial}`) {
                     this.attackKey = `atk-${this.serial}`;
-                    if (a.aim) {
+                    if (leap) {
+                        const speed = ((a.leapImpact ?? 0.5) * c.clipDuration(spec.clip)) / h.atk.windup;
+                        c.play({ ...spec, speed }, this.attackKey);
+                    } else if (a.aim) {
                         c.play(a.aim, this.attackKey);
                     } else {
                         // one clip per melee attack: slow it so the weapon connects exactly when the windup ends
@@ -552,7 +564,8 @@ export class HunterView {
                         c.play({ ...spec, speed }, this.attackKey);
                     }
                 } else if (h.state !== 'windup') {
-                    if (a.aim) c.play(spec, `${this.attackKey}-release`);
+                    if (leap) c.setSpeed(1);
+                    else if (a.aim) c.play(spec, `${this.attackKey}-release`);
                     else c.setSpeed(1.2);
                 }
                 break;
@@ -562,6 +575,9 @@ export class HunterView {
                 break;
             case 'broken':
                 c.play(this.common.broken);
+                break;
+            case 'roar':
+                c.play(this.common.roar, `roar-${this.serial}`);
                 break;
             case 'dead':
                 c.play(this.common.dead);
@@ -581,12 +597,16 @@ export class HunterView {
             lift = -sink * 0.8;
             alpha = 1 - sink;
         }
+        // Grave Leap: a high arc on top of the clip's own jump
+        lift += h.air * 2.2;
         c.body.position.y = lift;
         c.setOpacity(alpha);
 
-        // glow: hit flash, pulsing purple for an armored heavy windup
+        // glow: hit flash, pulsing purple for an armored heavy windup, a red smoulder once enraged
         if (h.flashT > 0) c.setGlow(0xffffff, 0.9);
         else if (h.state === 'windup' && h.atk?.heavy) c.setGlow(C.heavy, 0.3 + 0.25 * Math.sin(h.st * 30));
+        else if (h.state === 'roar') c.setGlow(C.blood, 0.5 + 0.3 * Math.sin(h.st * 24));
+        else if (h.phase === 2 && h.alive) c.setGlow(0xdc2626, 0.16 + 0.08 * Math.sin(performance.now() / 160));
         else c.setGlow(0x000000, 0);
 
         this.updateTelegraph(h);
@@ -605,7 +625,7 @@ export class HunterView {
         const style = atk?.style ?? 'melee';
         this.cone.visible = !!atk && style === 'melee';
         this.line.visible = !!atk && style === 'bolt';
-        this.circle.visible = !!atk && style === 'blast';
+        this.circle.visible = !!atk && (style === 'blast' || style === 'leap');
         if (!atk) return;
         const color = style === 'bolt' ? C.bolt : atk.heavy ? C.heavy : C.jab;
         const progress = Math.min(1, h.st / atk.windup);

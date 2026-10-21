@@ -12,13 +12,16 @@
  *     it, or parry in the window to warp in and counter).
  * Heavy windups have armor: normal hits do not interrupt them. Every stat is
  * scaled at spawn by the wave's difficulty (`WaveMods`).
+ *
+ * The boss (Gravelord) never flinches; only a poise break stuns it. At half
+ * hp it roars into phase 2: faster attacks, wider quakes and the Grave Leap.
  */
 import { T, DEG, type EnemyAttackDef, type HunterKind, type HunterKindDef } from './tuning.ts';
 import { C } from './fxTypes.ts';
 import type { World } from './world.ts';
 
 export type { HunterKind } from './tuning.ts';
-export type HState = 'spawn' | 'chase' | 'windup' | 'active' | 'recover' | 'flinch' | 'broken' | 'dead';
+export type HState = 'spawn' | 'chase' | 'windup' | 'active' | 'recover' | 'flinch' | 'broken' | 'roar' | 'dead';
 
 export interface HitOptions {
     /** Direction the hit pushes the target, radians. */
@@ -76,10 +79,10 @@ export class Hunter {
 
     private readonly poiseMax: number;
     private readonly speed: number;
-    private readonly jab: EnemyAttackDef;
-    private readonly heavy: EnemyAttackDef;
+    private jab: EnemyAttackDef;
+    private heavy: EnemyAttackDef;
     private readonly shot: EnemyAttackDef | null;
-    private readonly cooldownMult: number;
+    private cooldownMult: number;
     private cooldown = 0.6 + Math.random() * 0.8;
     private struck = false;
     /** The swing whoosh for the current windup has been started. */
@@ -92,6 +95,15 @@ export class Hunter {
     private orbitSign = Math.random() < 0.5 ? -1 : 1;
     /** Boss: how many attacks since the last quake (the quake re-fires after quakeEvery). */
     private bossMoves = 0;
+    /** Boss: 1, then 2 after the roar at half hp. */
+    phase = 1;
+    /** Boss: seconds until the next Grave Leap is allowed. */
+    private leapCd = 0;
+    /** Grave Leap: where the jump started, and 0..1 height of the arc right now (the view lifts the body). */
+    private leapFromX = 0;
+    private leapFromY = 0;
+    private leapStarted = false;
+    air = 0;
 
     constructor(
         private readonly w: World,
@@ -113,9 +125,28 @@ export class Hunter {
         this.jab = scaleAttack(this.def.boss ? T.boss.sweep : T.hunter.jab, mods);
         this.heavy = scaleAttack(this.def.boss ? T.boss.smash : T.hunter.heavy, mods);
         this.shot = this.def.ranged ? scaleAttack(this.def.ranged.attack, mods) : null;
-        // Boss: quake always exists; its scale comes with the wave like every other attack.
+        // Boss: quake and leap always exist; their scale comes with the wave like every other attack.
         this.quake = scaleAttack(T.boss.quake, mods);
+        this.leap = scaleAttack(T.boss.leap, mods);
         this.cooldownMult = mods.cooldown;
+    }
+
+    /** Boss phase 2: every attack winds up and recovers faster, quakes grow. */
+    private enrage(): void {
+        const m = T.boss.p2Windup;
+        const fast = (a: EnemyAttackDef): EnemyAttackDef => ({ ...a, windup: a.windup * m, recover: a.recover * m });
+        this.jab = fast(this.jab);
+        this.heavy = fast(this.heavy);
+        this.quake = { ...fast(this.quake), radius: T.boss.p2QuakeRadius };
+        this.cooldownMult *= T.boss.p2Cooldown;
+        this.phase = 2;
+        this.bossMoves = 0;
+        this.leapCd = 1.5;
+        this.atk = null;
+        this.poise = this.poiseMax;
+        this.kvx = this.kvy = 0;
+        this.enter('roar');
+        this.w.onBossEnrage(this);
     }
 
     get alive(): boolean {
@@ -147,13 +178,16 @@ export class Hunter {
     private pickMove(dist: number): EnemyAttackDef | null {
         if (this.shot) return this.shot;
         if (!this.def.boss) return Math.random() < T.hunter.heavyChance ? this.heavy : this.jab;
-        if (this.bossMoves >= T.boss.quakeEvery) return this.quake;
+        if (this.bossMoves >= (this.phase === 2 ? T.boss.p2QuakeEvery : T.boss.quakeEvery)) return this.quake;
+        // phase 2: a player who keeps their distance gets leapt on
+        if (this.phase === 2 && this.leapCd <= 0 && dist >= T.boss.leapMinDist) return this.leap;
         const melee = this.bossMoves % 2 === 1 ? this.heavy : this.jab;
         return dist <= melee.range ? melee : null;
     }
 
-    /** The boss's quake, scaled for its wave. */
+    /** The boss's quake and Grave Leap, scaled for its wave. */
     private quake: EnemyAttackDef;
+    private leap: EnemyAttackDef;
 
     update(dt: number): void {
         if (dt <= 0) return;
@@ -161,7 +195,9 @@ export class Hunter {
         this.sinceHit += dt;
         this.flashT = Math.max(0, this.flashT - dt);
         this.cooldown = Math.max(0, this.cooldown - dt);
+        this.leapCd = Math.max(0, this.leapCd - dt);
         this.voiceCd = Math.max(0, this.voiceCd - dt);
+        if (this.state !== 'windup' || this.atk?.style !== 'leap') this.air = 0;
         if (this.sinceHit > T.hunter.poiseRegenDelay && this.state !== 'broken') this.poise = this.poiseMax;
         if (this.state !== 'chase') this.retreating = false;
 
@@ -189,10 +225,15 @@ export class Hunter {
                     if (this.atk.style === 'blast') {
                         this.w.fx.sound('mageCast', { x: this.x });
                         if (this.def.boss) this.w.fx.sound('rumble', { x: this.x, volume: 0.7 });
+                    } else if (this.atk.style === 'leap') {
+                        this.leapCd = T.boss.leapCooldown;
+                        this.leapStarted = false;
+                        this.w.fx.sound('growl', { x: this.x });
                     } else if (this.atk.heavy) this.w.fx.sound('heavyTell', { x: this.x });
                     this.whooshed = false;
-                    // quake fires on the third move, then the sweep/smash alternation starts over
-                    this.bossMoves = atk === this.quake ? 0 : this.bossMoves + 1;
+                    // quake fires every few moves, then the sweep/smash alternation starts over
+                    if (atk === this.quake) this.bossMoves = 0;
+                    else if (atk !== this.leap) this.bossMoves++;
                     this.aimX = p.x;
                     this.aimY = p.y;
                     this.enter('windup');
@@ -206,12 +247,14 @@ export class Hunter {
                     const diff = wrapAngle(toPlayer - this.facing);
                     this.facing += diff * Math.min(1, dt * 12);
                 }
-                if (atk.style === 'blast' && this.st < atk.windup * 0.6) {
+                const trackFor = atk.style === 'leap' ? T.boss.leapTrack : 0.6;
+                if ((atk.style === 'blast' || atk.style === 'leap') && this.st < atk.windup * trackFor) {
                     // the circle follows the player for a while, then stays put
                     const k = Math.min(1, dt * 5);
                     this.aimX += (p.x - this.aimX) * k;
                     this.aimY += (p.y - this.aimY) * k;
                 }
+                if (atk.style === 'leap') this.updateLeap(atk);
                 // the swing whoosh starts just before the strike so its peak lands on it
                 const left = atk.windup - this.st;
                 if (!this.whooshed && (atk.style ?? 'melee') === 'melee' && left <= 0.09) {
@@ -236,6 +279,7 @@ export class Hunter {
                     this.struck = true;
                     if (atk.style === 'bolt') this.w.fireBolt(this, atk);
                     else if (atk.style === 'blast') this.w.blast(this, atk, this.aimX, this.aimY);
+                    else if (atk.style === 'leap') this.w.bossLand(this, atk);
                     else this.w.hunterStrike(this, atk);
                 }
                 // the strike may have broken this hunter with a counter
@@ -258,6 +302,13 @@ export class Hunter {
                     this.enter('chase');
                 }
                 break;
+            case 'roar':
+                this.facing = toPlayer;
+                if (this.st >= T.boss.roar.time) {
+                    this.cooldown = 0.4;
+                    this.enter('chase');
+                }
+                break;
             case 'broken':
                 if (this.st >= T.hunter.breakStun) {
                     this.poise = this.poiseMax;
@@ -276,6 +327,28 @@ export class Hunter {
         const k = Math.exp(-10 * dt);
         this.kvx *= k;
         this.kvy *= k;
+    }
+
+    /**
+     * Grave Leap: crouch while the circle tracks, then fly in an arc onto the
+     * locked circle, touching down exactly as the windup ends.
+     */
+    private updateLeap(atk: EnemyAttackDef): void {
+        const t0 = atk.windup * T.boss.leapTrack;
+        if (this.st < t0) return;
+        if (!this.leapStarted) {
+            this.leapStarted = true;
+            this.leapFromX = this.x;
+            this.leapFromY = this.y;
+            this.w.fx.burst(this.x, this.y, 0x6b5a48, 14, 380, 7, 0.45, false);
+        }
+        const f = Math.min(1, (this.st - t0) / (atk.windup - t0));
+        // ease out so it hangs at the top, then drops
+        const e = 1 - (1 - f) * (1 - f);
+        this.x = this.leapFromX + (this.aimX - this.leapFromX) * e;
+        this.y = this.leapFromY + (this.aimY - this.leapFromY) * e;
+        this.facing = Math.atan2(this.aimY - this.leapFromY, this.aimX - this.leapFromX);
+        this.air = Math.sin(f * Math.PI);
     }
 
     /** Melee: walk in, then circle the player a little instead of standing still. */
@@ -325,6 +398,11 @@ export class Hunter {
     /** Returns true if this hit broke the hunter's poise. */
     takeHit(dmg: number, poiseDmg: number, opts: HitOptions): boolean {
         if (!this.alive) return false;
+        if (this.state === 'roar') {
+            // the roar shrugs everything off
+            this.flashT = 0.05;
+            return false;
+        }
         if (this.state === 'broken') dmg *= T.hunter.breakDamageMult;
         this.hp -= dmg;
         this.sinceHit = 0;
@@ -336,6 +414,10 @@ export class Hunter {
 
         if (this.hp <= 0) {
             this.die();
+            return false;
+        }
+        if (this.def.boss && this.phase === 1 && this.hp <= this.hpMax * T.boss.enrageAt) {
+            this.enrage();
             return false;
         }
         // a grunt on some hits, never a chorus
@@ -353,6 +435,8 @@ export class Hunter {
                 this.w.fx.text(this.x, this.y - 40, 'BREAK!', C.counter, 40, 0.9);
                 this.w.fx.sound('poiseBreak', { x: this.x });
                 this.w.fx.ring(this.x, this.y, this.r, this.r * 3, C.counter, 8, 0.35);
+            } else if (this.def.boss) {
+                // the Gravelord has hyper armor: only a poise break stops it
             } else if (this.state === 'windup' && this.atk && !this.atk.heavy) {
                 // light windups are interrupted, heavy ones have armor
                 this.atk = null;
@@ -364,6 +448,15 @@ export class Hunter {
         return broke;
     }
 
+    /** The boss fell: this hunter crumbles to dust (still counts as a KO). */
+    crumble(): void {
+        if (!this.alive) return;
+        this.atk = null;
+        this.enter('dead');
+        this.w.fx.burst(this.x, this.y, 0x6b5a48, 14, 300, 7, 0.5, false);
+        this.w.onHunterKilled();
+    }
+
     private die(): void {
         this.atk = null;
         this.enter('dead');
@@ -371,5 +464,6 @@ export class Hunter {
         this.w.fx.burst(this.x, this.y, C.hunter, 18, 420, 7, 0.5, false);
         this.w.fx.burst(this.x, this.y, C.spark, 12, 360, 5, 0.35);
         this.w.onHunterKilled();
+        if (this.def.boss) this.w.onBossKilled(this);
     }
 }

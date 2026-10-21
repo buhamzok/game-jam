@@ -46,8 +46,11 @@ export interface PounceDef {
 }
 
 export interface EnemyAttackDef {
-    /** melee: cone in front; bolt: a projectile along a red line; blast: a purple circle on the ground. */
-    style?: 'melee' | 'bolt' | 'blast';
+    /**
+     * melee: cone in front; bolt: a projectile along a red line; blast: a purple
+     * circle on the ground; leap: the attacker jumps onto a red circle and lands on it.
+     */
+    style?: 'melee' | 'bolt' | 'blast' | 'leap';
     heavy: boolean;
     windup: number;
     active: number;
@@ -274,7 +277,8 @@ export const T = {
                 keepMax: 640,
             },
          },
-         boss: { hp: 620, poise: 150, speed: 135, radius: 62, boss: true },
+         // radius matches the 3.2 m golem model so nobody stands inside it
+         boss: { hp: 620, poise: 150, speed: 135, radius: 92, boss: true },
      } as Record<HunterKind, HunterKindDef>,
      boss: {
         /** Deadzone: the player may hug its legs, but its swings cover far ahead. */
@@ -289,6 +293,25 @@ export const T = {
         cooldownMax: 3.2,
         /** Fraction of knockback the boss lets land. */
         knockScale: 0.35,
+        /** Phase 2 starts at this fraction of max hp. */
+        enrageAt: 0.5,
+        /** Phase 2: the roar (immune, pushes the player away, raises two hunters). */
+        roar: { time: 1.5, pushRadius: 340, push: 900, adds: 2 },
+        /** Phase 2 tempo: windups and recoveries scale by this, and so do cooldowns. */
+        p2Windup: 0.82,
+        p2Cooldown: 0.65,
+        /** Phase 2: a quake every N attacks, with a wider circle. */
+        p2QuakeEvery: 2,
+        p2QuakeRadius: 300,
+        /** Phase 2 Grave Leap: from range, it jumps onto a red circle under the player. Dodge out. */
+        leap: { style: 'leap', heavy: false, windup: 1.15, active: 0.12, recover: 0.9, range: 900, arcDeg: 0, dmg: 22, lunge: 0, radius: 175 } as EnemyAttackDef,
+        /** The leap's circle tracks the player for this fraction of the windup, then locks; the jump takes the rest. */
+        leapTrack: 0.4,
+        leapCooldown: 5,
+        /** Only leaps when the player is at least this far away. */
+        leapMinDist: 300,
+        /** Its death: every hunter left crumbles; the team heals this fraction of max hp. */
+        killHeal: 0.35,
     },
     /** Reflected bolts (parried) fly back this much faster and hit for this. */
     reflect: { speedMult: 1.3, dmg: 30, poise: 40 },
@@ -315,7 +338,12 @@ export const T = {
     /** At most this many enemies wind up or strike at the same time. */
     maxAttackers: 2,
 
-    arena: { w: 1100, h: 1600 },
+    /**
+     * Fight area. Bodies stop `wall` units inside the fence on the sides and far
+     * end, and `nearWall` inside the near fence (the camera looks over it, so a
+     * body pressed against it would stand in the railings).
+     */
+    arena: { w: 1100, h: 1600, wall: 38, nearWall: 90 },
     waves: { base: 2, perWave: 1, max: 7, delay: 1.2, bannerTime: 1.6, minSpawnDistance: 380 },
     /**
      * Each wave after the first makes hunters stronger: per-wave step and cap

@@ -64,7 +64,8 @@ export default defineConfig({
     // matches the host's — hence the exact react/react-dom pins in package.json.
     // `npm run build:bundled` disables it for a standalone build.
     // Playground: local dev talks to RUN's playground backend (storage, leaderboards, AI gen).
-    plugins: [react(), rundotGameLibrariesPlugin(), rundotGamePlaygroundPlugin(), tailwindcss(), soundBoardPicks()],
+    // NO_PLAYGROUND=1 npm run dev: plain browser, no RUN sign-in (headless tests; the game runs SDK-less).
+    plugins: [react(), rundotGameLibrariesPlugin(), ...(process.env.NO_PLAYGROUND ? [] : [rundotGamePlaygroundPlugin()]), tailwindcss(), soundBoardPicks()],
     server: {
         allowedHosts: true,
     },

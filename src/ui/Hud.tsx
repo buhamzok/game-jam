@@ -243,8 +243,10 @@ export default function Hud() {
                                 <span>{bossHp.name}</span>
                                 <span className="tabular-nums">{Math.ceil(bossHp.frac * 100)}%</span>
                             </div>
-                            <div className="mt-0.5 h-2 overflow-hidden rounded-full bg-black/60">
+                            <div className="relative mt-0.5 h-2 overflow-hidden rounded-full bg-black/60">
                                 <div className="h-full rounded-full bg-rose-500 transition-[width] duration-100" style={{ width: `${Math.max(2, bossHp.frac * 100)}%` }} />
+                                {/* notch where phase 2 starts; it goes once the boss is past it */}
+                                {bossHp.mark && bossHp.frac > bossHp.mark && <div className="absolute inset-y-0 w-0.5 bg-white/80" style={{ left: `${bossHp.mark * 100}%` }} />}
                             </div>
                         </div>
                     )}

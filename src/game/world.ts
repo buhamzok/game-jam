@@ -250,6 +250,90 @@ export class World {
         this.fx.shake(0.12);
     }
 
+    /** The Gravelord lands its Grave Leap on the locked circle: dodge out (red), or parry it. */
+    bossLand(h: Hunter, atk: EnemyAttackDef): void {
+        const p = this.player;
+        const r = atk.radius ?? 175;
+        const x = h.x;
+        const y = h.y;
+        this.fx.ring(x, y, 20, r * 1.15, C.jab, 14, 0.45);
+        this.fx.ring(x, y, 10, r * 0.7, 0xffffff, 8, 0.3);
+        this.fx.crack(x, y, r * 1.1, C.jab, 1.4);
+        this.fx.burst(x, y, 0x6b5a48, 26, 620, 9, 0.6, false);
+        this.fx.shake(0.75);
+        this.fx.sound('smash', { x });
+        this.fx.sound('rumble', { x });
+        const hitsNow = Math.hypot(p.x - x, p.y - y) <= r + p.r;
+        const hitsOrigin = p.state === 'dodge' && Math.hypot(p.dodgeOX - x, p.dodgeOY - y) <= r + p.r;
+        const away = Math.atan2(p.y - y, p.x - x);
+        const result = this.resolvePlayerHit(atk.dmg, away, hitsNow, hitsOrigin);
+        if (result === 'hit') p.push(away, 420);
+        if (result !== 'parried') return;
+        // parried landing: the guard holds and the golem staggers
+        h.takeHit(0, 30, { angle: Math.atan2(h.y - p.y, h.x - p.x), knock: 160 });
+        this.fx.sound('parry');
+        this.fx.text(p.x, p.y - 40, 'BLOCK', C.block, 30, 0.6);
+        this.fx.ring(p.x, p.y, p.r, p.r * 2.2, C.block, 6, 0.2);
+        this.fx.freeze(0.06);
+    }
+
+    /** Half hp: the Gravelord roars into phase 2, pushes the player away and raises two hunters. */
+    onBossEnrage(h: Hunter): void {
+        const p = this.player;
+        const t = T.boss.roar;
+        const d = Math.hypot(p.x - h.x, p.y - h.y);
+        if (d < t.pushRadius) p.push(Math.atan2(p.y - h.y, p.x - h.x), t.push * (1 - d / t.pushRadius) + 200);
+        this.fx.ring(h.x, h.y, h.r, t.pushRadius, C.blood, 16, 0.6);
+        this.fx.ring(h.x, h.y, h.r, t.pushRadius * 1.5, C.heavy, 10, 0.8);
+        this.fx.crack(h.x, h.y, t.pushRadius * 0.9, C.blood, 1.6);
+        this.fx.burst(h.x, h.y, 0x3b3630, 30, 520, 9, 0.7, false);
+        this.fx.text(h.x, h.y - 150, 'ENRAGED', C.blood, 48, 1.4);
+        this.fx.freeze(0.18);
+        this.fx.shake(0.9);
+        this.fx.flash(C.blood, 0.35);
+        this.fx.sound('growl', { x: h.x, volume: 1.3 });
+        this.fx.sound('rumble', { x: h.x });
+        this.fx.sound('bell', { delay: 0.3 });
+        store.patch({ banner: 'GRAVELORD ENRAGED', bannerSub: 'The dead rise. Watch for the leap!' });
+        this.bannerTimer = T.waves.bannerTime + 0.4;
+        const mods = this.waveMods();
+        for (let i = 0; i < t.adds; i++) {
+            const ang = Math.random() * Math.PI * 2;
+            const b = this.bounds(T.hunter.radius);
+            const x = Math.max(b.x0, Math.min(b.x1, h.x + Math.cos(ang) * 260));
+            const y = Math.max(b.y0, Math.min(b.y1, h.y + Math.sin(ang) * 260));
+            this.hunters.push(new Hunter(this, x, y, i % 2 === 0 ? 'knight' : 'barbarian', mods));
+            this.fx.ring(x, y, 10, 90, C.blood, 8, 0.5);
+        }
+    }
+
+    /** The Gravelord falls: slow motion, every hunter left crumbles, the team heals and refills. */
+    onBossKilled(h: Hunter): void {
+        const p = this.player;
+        this.fx.freeze(0.45);
+        this.fx.flash(0xffffff, 0.6);
+        this.fx.shake(1);
+        this.fx.ring(h.x, h.y, h.r, 520, 0xfde68a, 18, 0.9);
+        this.fx.ring(h.x, h.y, h.r, 320, 0xffffff, 10, 0.6);
+        this.fx.burst(h.x, h.y, 0x3b3630, 40, 640, 10, 0.9, false);
+        this.fx.burst(h.x, h.y, 0xfde68a, 30, 520, 7, 0.8);
+        this.fx.text(h.x, h.y - 170, 'GRAVELORD FALLS', 0xfde68a, 52, 1.8);
+        this.fx.sound('rumble', { volume: 1.2 });
+        this.fx.sound('bell', { delay: 0.2 });
+        this.fx.sound('vo_flawless', { delay: 1.0 });
+        for (const o of this.hunters) if (o !== h) o.crumble();
+        for (const m of p.team) {
+            if (!m.alive) continue;
+            m.hp = Math.min(T.monsters[m.kind].hp, m.hp + T.monsters[m.kind].hp * T.boss.killHeal);
+            m.energy = T.energy.max;
+        }
+        this.fx.text(p.x, p.y - 90, `+${Math.round(T.boss.killHeal * 100)}% HP`, C.rod, 32, 1.4);
+        store.patch({ banner: 'GRAVELORD DEFEATED', bannerSub: 'Your team heals and powers up' });
+        this.bannerTimer = T.waves.bannerTime + 1;
+        // no "flawless" call from the wave-clear check on top of this one
+        this.waveHurt = true;
+    }
+
     /** The rogue fires: a bolt leaves along its locked aim line. */
     fireBolt(h: Hunter, atk: EnemyAttackDef): void {
         const speed = atk.speed ?? 1000;
@@ -734,12 +818,19 @@ export class World {
         }
     }
 
+    /** Walkable box for a body of radius r: inside the fence, never in it. */
+    bounds(r: number): { x0: number; x1: number; y0: number; y1: number } {
+        const a = T.arena;
+        const hw = a.w / 2;
+        const hh = a.h / 2;
+        return { x0: -hw + a.wall + r, x1: hw - a.wall - r, y0: -hh + a.wall + r, y1: hh - a.nearWall - r };
+    }
+
     private clampToArena(): void {
-        const hw = T.arena.w / 2;
-        const hh = T.arena.h / 2;
         const clamp = (o: { x: number; y: number; r: number }) => {
-            o.x = Math.max(-hw + o.r, Math.min(hw - o.r, o.x));
-            o.y = Math.max(-hh + o.r, Math.min(hh - o.r, o.y));
+            const b = this.bounds(o.r);
+            o.x = Math.max(b.x0, Math.min(b.x1, o.x));
+            o.y = Math.max(b.y0, Math.min(b.y1, o.y));
         };
         clamp(this.player);
         for (const h of this.hunters) clamp(h);
@@ -787,6 +878,11 @@ export class World {
             // wave cleared: a flawless one gets its own call
             this.waveCleared = true;
             if (!this.waveHurt && this.wave > 0) this.fx.sound('vo_flawless', { delay: 0.3 });
+            if (this.wave > 0 && !isBossWave(this.wave)) {
+                const p = this.player;
+                this.fx.text(p.x, p.y - 110, this.waveHurt ? 'WAVE CLEAR' : 'FLAWLESS', this.waveHurt ? 0xfde68a : C.counter, 40, 1.2);
+                this.fx.ring(p.x, p.y, p.r, 220, 0xfde68a, 8, 0.45);
+            }
             this.waveTimer = this.waveHurt ? T.waves.delay : T.waves.delay + 1;
         }
         this.waveTimer -= dt;
@@ -859,7 +955,7 @@ export class World {
         const u = p.unit();
         const teamKey = `${p.active}|${p.team.map((m) => `${Math.ceil(m.hp)}|${m.alive}`).join('|')}`;
         const boss = this.hunters.find((h) => h.def.boss);
-        const bossKey = boss ? `${Math.ceil(boss.hp)}|${boss.hpMax}` : '';
+        const bossKey = boss && boss.alive ? `${Math.ceil(boss.hp)}|${boss.hpMax}|${boss.phase}` : '';
         const next = {
             hp: Math.ceil(u.hp),
             energy: Math.floor(u.energy),
@@ -915,7 +1011,7 @@ export class World {
                 transLabel: next.trans ? T.trans[u.kind].label : '',
                 team: p.team.map((m) => ({ kind: m.kind, hp: Math.ceil(m.hp), hpMax: T.monsters[m.kind].hp, alive: m.alive })),
                 bossHp: next.boss
-                    ? { frac: Math.max(0, Math.ceil(Number(next.boss.split('|')[0])) / Number(next.boss.split('|')[1])), name: 'GRAVELORD' }
+                    ? { frac: Math.max(0, Math.ceil(Number(next.boss.split('|')[0])) / Number(next.boss.split('|')[1])), name: boss!.phase === 2 ? 'GRAVELORD · ENRAGED' : 'GRAVELORD', mark: T.boss.enrageAt }
                     : null,
             });
         }
