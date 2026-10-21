@@ -14,3 +14,4 @@ rundot/docs/
 # browser test leftovers
 .playwright-mcp/
 .err*.txt
+._.DS_Store
