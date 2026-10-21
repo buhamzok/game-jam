@@ -28,6 +28,10 @@ async function boot() {
         }
     }
 
+    // Opened from a friend's challenge link? Resolves in the background (the
+    // host may still be attributing a fresh install) and patches the store.
+    void import('./sdk/challenge.ts').then((c) => c.resolveChallenge()).catch(() => undefined);
+
     // 2. ADAPT: load persisted progress (RundotGameAPI.storage) before first
     //    render, so the first screen can reflect real progress instead of
     //    popping in after a beat. The Daily Hunt panel reads best wave,

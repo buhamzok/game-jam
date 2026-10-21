@@ -90,6 +90,10 @@ export interface AppState {
     flash: boolean;
     /** Which controls to show: touch buttons, or keyboard hints (switches on last input used). */
     inputMode: 'touch' | 'keyboard';
+    /** Opened from a friend's challenge link: the wave to beat (see sdk/challenge.ts). */
+    challenge: { wave: number; kills: number; from: string } | null;
+    /** This run got past the challenge wave. */
+    challengeBeaten: boolean;
 }
 
 function startingInputMode(): 'touch' | 'keyboard' {
@@ -142,6 +146,8 @@ let state: AppState = {
     shake: true,
     flash: true,
     inputMode: startingInputMode(),
+    challenge: null,
+    challengeBeaten: false,
 };
 
 export const store = {

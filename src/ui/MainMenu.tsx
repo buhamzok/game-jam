@@ -16,6 +16,7 @@ export default function MainMenu() {
     const board = useStore((s) => s.board);
     const bestWave = useStore((s) => s.bestWave);
     const streak = useStore((s) => s.streak);
+    const challenge = useStore((s) => s.challenge);
     useEffect(() => {
         void fetchDailyBoard();
     }, []);
@@ -38,12 +39,23 @@ export default function MainMenu() {
                 </h1>
             </div>
 
+            {challenge && (
+                <div className="w-full max-w-xs rounded-2xl bg-amber-400/15 p-3 ring-2 ring-amber-400/70">
+                    <p className="text-[11px] font-black tracking-[0.25em] text-amber-300">{'\u2694'} CHALLENGE</p>
+                    <p className="mt-1 text-base font-black text-white">
+                        {challenge.from} reached wave {challenge.wave}
+                        {challenge.kills > 0 ? ` with ${challenge.kills} KOs` : ''}.
+                    </p>
+                    <p className="text-sm font-bold text-white/70">Get past wave {challenge.wave} to beat them.</p>
+                </div>
+            )}
+
             <button
                 type="button"
                 className="rounded-2xl bg-primary px-14 py-3.5 text-2xl font-black text-black shadow-lg transition-transform active:scale-95"
                 onClick={fight}
             >
-                FIGHT
+                {challenge ? 'ACCEPT' : 'FIGHT'}
             </button>
 
             <div className="w-full max-w-xs rounded-2xl bg-black/40 p-3 text-sm font-bold">

@@ -97,7 +97,7 @@ export class World {
 
     constructor(readonly fx: Fx) {
         this.player = new Player(this);
-        store.patch({ gameOver: false, banner: '', bannerSub: '' });
+        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false });
         this.syncHud();
     }
 
@@ -894,6 +894,14 @@ export class World {
         if (bossWave) this.spawnBoss(mods);
         for (const kind of this.roster()) this.spawnHunter(kind, mods);
         store.patch({ banner: bossWave ? `WAVE ${this.wave} - GRAVELORD` : `WAVE ${this.wave}`, bannerSub: this.bannerSubtitle() });
+        // a friend's challenge: reaching the wave after theirs beats it
+        const ch = store.get().challenge;
+        if (ch && !store.get().challengeBeaten && this.wave > ch.wave) {
+            store.patch({ challengeBeaten: true, bannerSub: `CHALLENGE BEATEN! You passed ${ch.from}` });
+            this.fx.sound('bell', { delay: 0.5 });
+            this.fx.flash(0xfde68a, 0.3);
+            void import('../sdk/dailyHunt.ts').then((h) => h.telemetry('challenge_beaten', { wave: ch.wave })).catch(() => undefined);
+        }
         this.waveHurt = false;
         this.waveCleared = false;
         // the announcer calls rounds 1 to 5 ("Round one... Fight!"), then the graveyard bell tolls
@@ -943,6 +951,8 @@ export class World {
         this.fx.sound('vo_gameover', { delay: 0.9 });
         this.witching = 0;
         store.patch({ gameOver: true, finalWave: this.wave, finalKills: this.kills, banner: '', bannerSub: '' });
+        // the RUN app's own Share button now sends this run as a challenge
+        void import('../sdk/challenge.ts').then((c) => c.setChallengeIntent(this.wave, this.kills)).catch(() => undefined);
         // Daily Hunt: remember the run and (when it beat the old best) score it
         // on the RUN daily board. Never blocks or throws into the sim.
         void import('../sdk/dailyHunt.ts')

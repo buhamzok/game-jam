@@ -14,6 +14,7 @@ import { T, type MonsterKind } from '../game/tuning.ts';
 import { audio } from '../game/audio.ts';
 import { sdkReady } from '../sdk/runSdk.ts';
 import { telemetry } from '../sdk/dailyHunt.ts';
+import { sendChallenge } from '../sdk/challenge.ts';
 import portraitWerewolf from '../assets/portrait-werewolf.png';
 import portraitVampire from '../assets/portrait-vampire.png';
 import portraitStitched from '../assets/portrait-stitched.png';
@@ -62,27 +63,6 @@ async function voteRun(): Promise<'opened' | 'copied' | 'failed'> {
     }
     try {
         await navigator.clipboard.writeText(VOTE_URL);
-        return 'copied';
-    } catch {
-        return 'failed';
-    }
-}
-
-async function shareRun(wave: number, kills: number): Promise<'shared' | 'copied' | 'failed'> {
-    const title = `I reached wave ${wave} in Tag Team Terror`;
-    const description = `${kills} hunters down. A monster tag-team brawler in the RUN October Jam: play it, then press Vote on the jam page.`;
-    if (sdkReady()) {
-        try {
-            const share = RundotGameAPI.social.shareLinkAsync({ shareParams: { from: 'gameover', wave: String(wave) }, metadata: { title, description } });
-            const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('share timed out')), 10000));
-            await Promise.race([share, timeout]);
-            return 'shared';
-        } catch (err) {
-            console.warn('[share] host share failed, copying the link instead', err);
-        }
-    }
-    try {
-        await navigator.clipboard.writeText(`${title}. Play it and vote: ${VOTE_URL}`);
         return 'copied';
     } catch {
         return 'failed';
@@ -202,6 +182,8 @@ export default function Hud() {
     const dailyPlayers = useStore((s) => s.dailyPlayers);
     const bestWave = useStore((s) => s.bestWave);
     const bossHp = useStore((s) => s.bossHp);
+    const challenge = useStore((s) => s.challenge);
+    const challengeBeaten = useStore((s) => s.challengeBeaten);
     const [shareState, setShareState] = useState<'idle' | 'busy' | 'shared' | 'copied' | 'failed'>('idle');
     const [voteState, setVoteState] = useState<'idle' | 'opened' | 'copied' | 'failed'>('idle');
 
@@ -237,6 +219,11 @@ export default function Hud() {
                         <span>Wave {wave}</span>
                         <span>KOs {kills}</span>
                     </div>
+                    {challenge && (
+                        <div className={`text-center text-[10px] font-black tracking-[0.15em] tabular-nums ${challengeBeaten ? 'text-emerald-300' : 'text-amber-300'}`}>
+                            {challengeBeaten ? `\u2713 BEAT ${challenge.from.toUpperCase()}'S WAVE ${challenge.wave}` : `\u2694 BEAT ${challenge.from.toUpperCase()}: PASS WAVE ${challenge.wave}`}
+                        </div>
+                    )}
                     {bossHp && (
                         <div>
                             <div className="flex justify-between text-[10px] font-black tracking-[0.25em] text-rose-300">
@@ -304,6 +291,11 @@ export default function Hud() {
                     {finalWave > bestWave && (
                         <p className="text-sm font-black tracking-wide text-amber-300">NEW PERSONAL BEST!</p>
                     )}
+                    {challenge && (
+                        <p className={`text-center text-base font-black ${challengeBeaten ? 'text-emerald-300' : 'text-rose-300'}`}>
+                            {challengeBeaten ? `You beat ${challenge.from}'s wave ${challenge.wave}!` : `${challenge.from} still leads: wave ${challenge.wave}`}
+                        </p>
+                    )}
                     <p className="text-sm font-bold text-white/60 tabular-nums">
                         {dailyRank != null ? `Daily Hunts today: rank ${dailyRank}${dailyPlayers ? ` of ${dailyPlayers}` : ''}` : 'Daily Hunt: wave saved'}
                     </p>
@@ -328,10 +320,18 @@ export default function Hud() {
                         onClick={async () => {
                             audio.play('click');
                             setShareState('busy');
-                            setShareState(await shareRun(finalWave, finalKills));
+                            setShareState(await sendChallenge(finalWave, finalKills));
                         }}
                     >
-                        {shareState === 'copied' ? 'Link copied' : shareState === 'shared' ? 'Shared!' : shareState === 'failed' ? 'Share from the jam page' : 'Share with a friend'}
+                        {shareState === 'copied'
+                            ? 'Challenge copied: paste it to a friend'
+                            : shareState === 'shared'
+                              ? 'Challenge sent!'
+                              : shareState === 'failed'
+                                ? 'Share from the jam page'
+                                : challenge
+                                  ? `\u2694 Challenge ${challenge.from} back`
+                                  : `\u2694 Challenge a friend: beat wave ${finalWave}`}
                     </button>
                     <button
                         type="button"
