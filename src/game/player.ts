@@ -349,8 +349,12 @@ export class Player {
         return true;
     }
 
+    /** Bumped on every swing (hunters may answer one with a guard). */
+    swingId = 0;
+
     private startSwing(index: number, mv: { x: number; y: number }): void {
         this.combo = index;
+        this.swingId++;
         this.swingDone = false;
         const target = this.w.nearestHunter(this.x, this.y, T.aimAssistRange);
         if (target) this.facing = Math.atan2(target.y - this.y, target.x - this.x);

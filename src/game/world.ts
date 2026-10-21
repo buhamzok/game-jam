@@ -115,6 +115,11 @@ export class World {
 
     // ---- queries -----------------------------------------------------------
 
+    /** The current wave number (hunters scale guard chance with it). */
+    waveNumber(): number {
+        return this.wave;
+    }
+
     attackersActive(): number {
         let n = 0;
         for (const h of this.hunters) if (h.isAttacking()) n++;
@@ -173,7 +178,7 @@ export class World {
             const reach = half + Math.asin(Math.min(1, h.r / Math.max(d, 1)));
             if (d > p.r + h.r && Math.abs(wrapAngle(ang - p.facing)) > reach) continue;
             hits++;
-            h.takeHit(dmg, s.poise, { angle: ang, knock: s.knock });
+            h.takeHit(dmg, s.poise, { angle: ang, knock: s.knock, breaker: finisher });
             this.fx.spray(h.x, h.y, ang, 1.2, C.spark, 8);
         }
         if (hits > 0) {
@@ -413,7 +418,7 @@ export class World {
                 for (const h of this.hunters) {
                     if (!h.targetable || Math.hypot(h.x - b.x, h.y - b.y) > h.r + BOLT_R) continue;
                     const ang = Math.atan2(b.vy, b.vx);
-                    h.takeHit(T.reflect.dmg * this.outMult(), T.reflect.poise, { angle: ang, knock: 260 });
+                    h.takeHit(T.reflect.dmg * this.outMult(), T.reflect.poise, { angle: ang, knock: 260, breaker: true });
                     this.fx.sound('boltHit', { x: h.x });
                     this.fx.sound('hit', { x: h.x });
                     this.fx.spray(h.x, h.y, ang, 1.2, C.counter, 12, 480, 6, 0.35);
@@ -473,7 +478,7 @@ export class World {
         const p = this.player;
         const ang = Math.atan2(h.y - p.y, h.x - p.x);
         const c = T.counter;
-        h.takeHit(c.dmg * this.outMult(), c.poise, { angle: ang, knock: c.knock });
+        h.takeHit(c.dmg * this.outMult(), c.poise, { angle: ang, knock: c.knock, breaker: true });
         p.addEnergy(T.energy.perCounter);
         this.bigMoveTimer = T.tag.rainWindow;
         this.fx.sound('parry');
@@ -517,7 +522,7 @@ export class World {
                 if (!h.targetable) continue;
                 const d = Math.hypot(h.x - p.x, h.y - p.y);
                 if (d > t.shockRadius) continue;
-                h.takeHit(t.shockDmg, t.shockPoise, { angle: Math.atan2(h.y - p.y, h.x - p.x), knock: t.shockKnock });
+                h.takeHit(t.shockDmg, t.shockPoise, { angle: Math.atan2(h.y - p.y, h.x - p.x), knock: t.shockKnock, breaker: true });
             }
             fx.ring(p.x, p.y, p.r, t.shockRadius, C.overcharge, 14, 0.5);
             fx.crack(p.x, p.y, t.shockRadius * 0.8, C.overcharge, 1.2);
@@ -548,7 +553,7 @@ export class World {
                 if (!h.targetable) continue;
                 const d = Math.hypot(h.x - p.x, h.y - p.y);
                 if (d > t.endRadius) continue;
-                h.takeHit(t.endDmg, 40, { angle: Math.atan2(h.y - p.y, h.x - p.x), knock: t.endKnock });
+                h.takeHit(t.endDmg, 40, { angle: Math.atan2(h.y - p.y, h.x - p.x), knock: t.endKnock, breaker: true });
             }
             fx.ring(p.x, p.y, p.r, t.endRadius, C.wolf, 14, 0.5);
             fx.text(p.x, p.y - 80, 'HOWL', C.wolf, 40, 1.0);
@@ -596,7 +601,7 @@ export class World {
         const pc = T.monsters[kind].special;
         const transformedRed = kind === 'stitched' && this.player.transT > 0;
         const color = kind === 'vampire' ? C.counter : kind === 'stitched' ? (transformedRed ? C.overcharge : C.rod) : C.wolf;
-        const hits = this.areaHit(x, y, pc.radius, pc.dmg, pc.poise, pc.knock);
+        const hits = this.areaHit(x, y, pc.radius, pc.dmg, pc.poise, pc.knock, true, true);
         if (hits > 0) this.bigMoveTimer = T.tag.rainWindow;
         this.fx.ring(x, y, 20, pc.radius * 1.25, color, 14, 0.45);
         this.fx.ring(x, y, 10, pc.radius * 0.8, 0xffffff, 8, 0.3);
@@ -632,7 +637,7 @@ export class World {
     }
 
     /** Hit every targetable hunter within `radius` of (x, y); returns how many were hit. `own`: the active monster's hit, so buffs apply. */
-    private areaHit(x: number, y: number, radius: number, dmg: number, poise: number, knock: number, own = true): number {
+    private areaHit(x: number, y: number, radius: number, dmg: number, poise: number, knock: number, own = true, breaker = false): number {
         let hits = 0;
         const d0 = own ? dmg * this.outMult() : dmg;
         for (const h of this.hunters) {
@@ -640,7 +645,7 @@ export class World {
             const d = Math.hypot(h.x - x, h.y - y);
             if (d - h.r > radius) continue;
             hits++;
-            h.takeHit(d0, poise, { angle: Math.atan2(h.y - y, h.x - x), knock });
+            h.takeHit(d0, poise, { angle: Math.atan2(h.y - y, h.x - x), knock, breaker });
         }
         return hits;
     }
@@ -694,7 +699,7 @@ export class World {
     private crimsonRain(): void {
         const center = { x: this.player.x, y: this.player.y };
         const t = T.tag;
-        this.areaHit(center.x, center.y, t.rainRadius, t.rainDmg, t.rainPoise, 200, false);
+        this.areaHit(center.x, center.y, t.rainRadius, t.rainDmg, t.rainPoise, 200, false, true);
         this.player.addEnergy(t.rainDmg); // the strike motivates the arriving ally a little
         this.fx.sound('wings');
         this.fx.sound('hit', { volume: 1.1 });
@@ -894,7 +899,7 @@ export class World {
     private bannerSubtitle(): string {
         const d = T.difficulty;
         if (isBossWave(this.wave)) return 'THE GRAVELORD RISES';
-        if (this.wave === d.barbarianFrom) return 'Barbarians join the hunt';
+        if (this.wave === d.barbarianFrom) return 'Barbarians join, and knights raise shields: break them with a finisher';
         if (this.wave === d.rogueFrom) return 'Crossbow rogues: dodge the red line';
         if (this.wave === d.mageFrom) return 'Mages: get out of the purple circle';
         return this.wave > 1 ? 'The hunters grow stronger' : '';

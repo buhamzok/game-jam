@@ -21,12 +21,14 @@ import { C } from './fxTypes.ts';
 import type { World } from './world.ts';
 
 export type { HunterKind } from './tuning.ts';
-export type HState = 'spawn' | 'chase' | 'windup' | 'active' | 'recover' | 'flinch' | 'broken' | 'roar' | 'dead';
+export type HState = 'spawn' | 'chase' | 'windup' | 'active' | 'recover' | 'flinch' | 'broken' | 'roar' | 'guard' | 'dead';
 
 export interface HitOptions {
     /** Direction the hit pushes the target, radians. */
     angle: number;
     knock: number;
+    /** Finishers, specials, counters, shocks: break a raised guard instead of being blocked. */
+    breaker?: boolean;
 }
 
 /** Wave multipliers applied at spawn (see T.difficulty). */
@@ -97,6 +99,12 @@ export class Hunter {
     private bossMoves = 0;
     /** Boss: 1, then 2 after the roar at half hp. */
     phase = 1;
+    /** Guard: seconds until it may raise its guard again, hits blocked this guard, last player swing seen. */
+    private guardCd = 1.5;
+    guardBlocks = 0;
+    private seenSwing = 0;
+    /** Bumped on every blocked hit (the view replays the block reaction). */
+    blockSerial = 0;
     /** Boss: seconds until the next Grave Leap is allowed. */
     private leapCd = 0;
     /** Grave Leap: where the jump started, and 0..1 height of the arc right now (the view lifts the body). */
@@ -196,6 +204,7 @@ export class Hunter {
         this.flashT = Math.max(0, this.flashT - dt);
         this.cooldown = Math.max(0, this.cooldown - dt);
         this.leapCd = Math.max(0, this.leapCd - dt);
+        this.guardCd = Math.max(0, this.guardCd - dt);
         this.voiceCd = Math.max(0, this.voiceCd - dt);
         if (this.state !== 'windup' || this.atk?.style !== 'leap') this.air = 0;
         if (this.sinceHit > T.hunter.poiseRegenDelay && this.state !== 'broken') this.poise = this.poiseMax;
@@ -217,6 +226,7 @@ export class Hunter {
                 if (!p.alive) break;
                 if (this.shot) this.keepDistance(dt, dx, dy, dist);
                 else this.closeIn(dt, dx, dy, dist);
+                if (this.maybeGuard(dist)) break;
                 const atk = this.pickMove(dist);
                 const reach = atk ? atk.range : T.hunter.attackRange;
                 if (atk && dist <= reach && this.cooldown <= 0 && this.w.attackersActive() < this.w.maxAttackers()) {
@@ -302,6 +312,14 @@ export class Hunter {
                     this.enter('chase');
                 }
                 break;
+            case 'guard':
+                this.facing += wrapAngle(toPlayer - this.facing) * Math.min(1, dt * 10);
+                if (this.st >= T.hunter.guard.time) {
+                    this.guardCd = T.hunter.guard.cooldown;
+                    this.cooldown = Math.min(this.cooldown, 0.25);
+                    this.enter('chase');
+                }
+                break;
             case 'roar':
                 this.facing = toPlayer;
                 if (this.st >= T.boss.roar.time) {
@@ -327,6 +345,45 @@ export class Hunter {
         const k = Math.exp(-10 * dt);
         this.kvx *= k;
         this.kvy *= k;
+    }
+
+    /** Can this hunter ever guard? Melee kinds, and the boss once enraged. */
+    get canGuard(): boolean {
+        if (this.shot) return false;
+        return this.def.boss ? this.phase === 2 : true;
+    }
+
+    /** In answer to a fresh player swing nearby, sometimes raise the guard. */
+    private maybeGuard(dist: number): boolean {
+        const p = this.w.player;
+        const g = T.hunter.guard;
+        if (p.swingId === this.seenSwing) return false;
+        this.seenSwing = p.swingId;
+        if (!this.canGuard || this.guardCd > 0 || dist > g.range || this.w.waveNumber() < g.fromWave) return false;
+        const chance = Math.min(g.chanceMax, g.chance + g.chancePerWave * this.w.waveNumber());
+        if (Math.random() >= chance) return false;
+        this.guardBlocks = 0;
+        this.atk = null;
+        this.enter('guard');
+        this.w.fx.sound('block', { x: this.x, volume: 0.6 });
+        return true;
+    }
+
+    /** Is a hit pushing along `angle` coming at the raised guard's front? */
+    private hitsGuard(angle: number): boolean {
+        if (this.state !== 'guard') return false;
+        // the hit pushes along `angle`, so it comes from angle + PI
+        const from = angle + Math.PI;
+        return Math.abs(wrapAngle(from - this.facing)) <= (T.hunter.guard.arcDeg / 2) * DEG;
+    }
+
+    private guardBreak(): void {
+        this.atk = null;
+        this.enter('broken');
+        this.w.fx.text(this.x, this.y - 50, 'GUARD BREAK', C.counter, 40, 0.9);
+        this.w.fx.sound('guardBreak', { x: this.x });
+        this.w.fx.ring(this.x, this.y, this.r, this.r * 3.2, 0x60a5fa, 10, 0.4);
+        this.w.fx.burst(this.x, this.y, 0x93c5fd, 16, 420, 6, 0.4);
     }
 
     /**
@@ -402,6 +459,23 @@ export class Hunter {
             // the roar shrugs everything off
             this.flashT = 0.05;
             return false;
+        }
+        if (this.hitsGuard(opts.angle)) {
+            if (opts.breaker || this.guardBlocks + 1 >= T.hunter.guard.maxBlocks) {
+                this.guardBreak();
+            } else {
+                // blocked: no damage, a little push, sparks off the shield
+                this.guardBlocks++;
+                this.blockSerial++;
+                this.flashT = 0.06;
+                const ks = (this.def.boss ? T.boss.knockScale : 1) * 0.35;
+                this.kvx += Math.cos(opts.angle) * opts.knock * ks;
+                this.kvy += Math.sin(opts.angle) * opts.knock * ks;
+                this.w.fx.text(this.x, this.y - 40, 'BLOCK', 0x93c5fd, 28, 0.5);
+                this.w.fx.spray(this.x - Math.cos(opts.angle) * this.r, this.y - Math.sin(opts.angle) * this.r, opts.angle + Math.PI, 1.4, 0xbfdbfe, 10, 380, 5, 0.25);
+                this.w.fx.sound('block', { x: this.x });
+                return false;
+            }
         }
         if (this.state === 'broken') dmg *= T.hunter.breakDamageMult;
         this.hp -= dmg;

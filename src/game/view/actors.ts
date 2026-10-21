@@ -431,7 +431,12 @@ const HUNTER_ANIMS: Record<HunterKind, HunterAnims> = {
     },
 };
 
+/** Guard pose: KayKit's Block_Hit, held at its raised-shield frame; the boss loops its own guard clip. */
+const GUARD_HOLD = 0.32;
+const GUARD_COLOR = 0x60a5fa;
+
 const COMMON = {
+    guard: { clip: 'Block_Hit', speed: 1.3, fade: 0.06 } as AnimSpec,
     spawn: { clip: 'Cheer', loop: false, speed: 1.4 } as AnimSpec,
     flinch: { clip: 'Hit_A', speed: 1.6, fade: 0.05 } as AnimSpec,
     broken: { clip: 'Hit_B', speed: 0.6, fade: 0.05 } as AnimSpec,
@@ -439,8 +444,9 @@ const COMMON = {
 };
 
 /** Per-kind overrides for the shared hunter moments (the boss has its own clips). */
-const COMMON_OVERRIDE: Partial<Record<HunterKind, Partial<{ spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec; roar: AnimSpec }>>> = {
+const COMMON_OVERRIDE: Partial<Record<HunterKind, Partial<{ spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec; roar: AnimSpec; guard: AnimSpec }>>> = {
     boss: {
+        guard: { clip: 'guard', loop: true, fade: 0.1 },
         // the entrance roars the transform clip; the death is its Knock_Down
         spawn: { clip: 'trans', loop: false, speed: 0.4, fade: 0.05 },
         // phase 2 roar: the same clip, played over the roar time
@@ -485,7 +491,10 @@ const teleMaterial = () => new MeshBasicMaterial({ transparent: true, depthWrite
 export class HunterView {
     readonly char: CharacterView;
     private readonly anims: HunterAnims;
-    private readonly common: { spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec; roar: AnimSpec };
+    private readonly common: { spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec; roar: AnimSpec; guard: AnimSpec };
+    /** Raised-guard shield: a flat glowing arc in front of the hunter (world space, like the telegraphs). */
+    private readonly shield: Mesh;
+    private readonly shieldMat = new MeshBasicMaterial({ color: GUARD_COLOR, transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
     /** World-space telegraphs (not rotated with the body): melee cone, aim line, blast circle. */
     private readonly teleRoot = new Group();
     private readonly cone = new Group();
@@ -522,7 +531,10 @@ export class HunterView {
         this.circleFill = new Mesh(flatCircle(), this.fullMat);
         this.circleEdge.position.y = 0.005;
         this.circle.add(this.circleFill, this.circleEdge);
-        this.teleRoot.add(this.cone, this.line, this.circle);
+        const arc = new RingGeometry(0.78, 1, 32, 1, -Math.PI * 0.5, Math.PI);
+        arc.rotateX(-Math.PI / 2);
+        this.shield = new Mesh(arc, this.shieldMat);
+        this.teleRoot.add(this.cone, this.line, this.circle, this.shield);
         this.cone.visible = this.line.visible = this.circle.visible = false;
 
         const starMat = new MeshBasicMaterial({ color: C.counter });
@@ -590,6 +602,12 @@ export class HunterView {
             case 'roar':
                 c.play(this.common.roar, `roar-${this.serial}`);
                 break;
+            case 'guard': {
+                // each blocked hit restarts the block reaction (a new key), then the pose holds
+                c.play(this.common.guard, `guard-${this.serial}-${h.blockSerial}`);
+                if (!this.common.guard.loop && c.clipFraction() >= GUARD_HOLD) c.setSpeed(0);
+                break;
+            }
             case 'dead':
                 c.play(this.common.dead);
                 break;
@@ -617,10 +635,21 @@ export class HunterView {
         if (h.flashT > 0) c.setGlow(0xffffff, 0.9);
         else if (h.state === 'windup' && h.atk?.heavy) c.setGlow(C.heavy, 0.3 + 0.25 * Math.sin(h.st * 30));
         else if (h.state === 'roar') c.setGlow(C.blood, 0.5 + 0.3 * Math.sin(h.st * 24));
+        else if (h.state === 'guard') c.setGlow(GUARD_COLOR, 0.28 + 0.1 * Math.sin(h.st * 18));
         else if (h.phase === 2 && h.alive) c.setGlow(0xdc2626, 0.16 + 0.08 * Math.sin(performance.now() / 160));
         else c.setGlow(0x000000, 0);
 
         this.updateTelegraph(h);
+
+        // raised guard: a blue arc in front, fading in fast
+        const on = h.state === 'guard';
+        this.shieldMat.opacity += ((on ? 0.75 : 0) - this.shieldMat.opacity) * Math.min(1, realDt * 14);
+        this.shield.visible = this.shieldMat.opacity > 0.02;
+        if (this.shield.visible) {
+            this.shield.position.set(h.x * U, 0.06, h.y * U);
+            this.shield.rotation.y = -h.facing;
+            this.shield.scale.setScalar((h.r + 34) * U);
+        }
 
         this.stars.visible = h.state === 'broken';
         if (this.stars.visible) {
@@ -681,7 +710,8 @@ export class HunterView {
 
     dispose(): void {
         this.teleRoot.removeFromParent();
-        for (const m of [this.coneFull, this.coneFill, this.lineFull, this.lineFill, this.circleEdge, this.circleFill]) m.geometry.dispose();
+        for (const m of [this.coneFull, this.coneFill, this.lineFull, this.lineFill, this.circleEdge, this.circleFill, this.shield]) m.geometry.dispose();
+        this.shieldMat.dispose();
         this.fullMat.dispose();
         this.fillMat.dispose();
         this.stars.children.forEach((s) => (s as Mesh).geometry.dispose());

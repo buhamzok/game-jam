@@ -340,6 +340,13 @@ export const T = {
         breakDamageMult: 1.5,
         /** Death animation time before the body is removed. */
         deathTime: 1.6,
+        /**
+         * Guard (knights, barbarians, the enraged boss): raised now and then in
+         * answer to a swing. Frontal hits deal nothing; a finisher, special,
+         * counter or transformation shock breaks it; so does a hit from behind
+         * landing anyway, or `maxBlocks` blocked hits.
+         */
+        guard: { time: 1.3, cooldown: 3.5, chance: 0.18, chancePerWave: 0.02, chanceMax: 0.42, arcDeg: 200, maxBlocks: 4, range: 260, fromWave: 2 },
     },
     /** At most this many enemies wind up or strike at the same time. */
     maxAttackers: 2,

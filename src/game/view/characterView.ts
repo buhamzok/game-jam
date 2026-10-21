@@ -145,6 +145,12 @@ export class CharacterView {
         if (this.current) this.current.timeScale = speed;
     }
 
+    /** Playback position of the current clip as a fraction 0..1. */
+    clipFraction(): number {
+        if (!this.current) return 0;
+        return this.current.time / Math.max(0.001, this.current.getClip().duration);
+    }
+
     /** Advance animations. Pass 0 to freeze the pose (hitstop). */
     update(dt: number): void {
         this.mixer.update(dt);
