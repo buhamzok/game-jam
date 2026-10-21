@@ -10,3 +10,7 @@ Thumbs.db
 coverage/
 rundot/docs/
 .rundot-docs/
+
+# browser test leftovers
+.playwright-mcp/
+.err*.txt
