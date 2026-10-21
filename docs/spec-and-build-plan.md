@@ -12,7 +12,7 @@ Still to build: the shield knight and a boss, techniques (E), a Daily Hunt leade
 
 **Oct 21:** the boss fight, the fence fix, the friend challenge, the skin shop and realms (a portal after every boss) are built and tested in the browser on the GitHub branch `claude/fight-polish` ([buhamzok/game-jam](https://github.com/buhamzok/game-jam)). None of it is deployed yet.
 
-**Next session: merge `claude/fight-polish`, pull it on the PC, play it on a phone and a PC (boss phase 2, portals, the skin shop in the playground), then `npm run build` and `rundot deploy` (owner's call). The deploy also uploads `rundot/shop.config.json`.**
+**Next session: merge `claude/fight-polish`, pull it on the PC, play it on a phone and a PC (boss phase 2, guards, the SPECIAL button, portals, the skin shop and the PVP Arena in the playground), then `npm run build` and `rundot deploy` (owner's call). The deploy also uploads `rundot/shop.config.json` and `rundot/simulation/pvp-system.json`. Post the trailer (`trailer/out/`) with the vote link.**
 
 - Project folder: `D:\PROJECTS2\tag-team-terror` (GitHub: [buhamzok/game-jam](https://github.com/buhamzok/game-jam))
 - RUN game ID: `Zo8tRIGBpGhAGb0XCXoI` (public; builds 1.0.0 to 1.5.0; entered in the October Jam)
@@ -86,6 +86,21 @@ Tested in a headless browser: type check, production build, frame-stepped scenar
 
 To check on a phone: the Grave Leap circle is readable, the boss is beatable at wave 5, the Hollow Woods trees do not hide the action, and the frame rate holds in the Pumpkin Patch (six point lights).
 
+## Built Oct 21, part 2 (same branch, not deployed yet)
+
+Tested the same way (browser scenarios, a bot through two bosses and two portals, a full PVP match). Not yet played on a phone.
+
+| Area | What changed |
+| --- | --- |
+| Phantom damage bug | The benched Vampire hit a random hunter for 6 every 2.2 s, anywhere on the map: hunters lost HP with nothing visibly hitting them. Removed (Crimson Rain stays). |
+| Special vs transform | Mashing claw no longer fires the special and empties the bar. Specials moved to their own button (E / SPECIAL) with a cooldown (9, 10, 11 s); only Q / TRNS spends the bar. |
+| Hunters guard | Knights, barbarians and the enraged Gravelord raise a blue shield now and then in answer to a swing (from wave 2): frontal hits are blocked; finishers, specials, counters and shocks break it (stun, extra damage), and so do 4 blocked hits or a hit from behind. Numbers in `T.hunter.guard`. |
+| Full Moon wolf | Glowing red eyes on the head bone and silver claws on both hands, grown in with the transformation (`src/game/view/wolfForm.ts`). |
+| The Stitched | Calm idle (his idle clip opened with a turn-away and an overhead flex), natural follow-through after each punch, smoother returns to idle. |
+| Title screen | Live 3D lineup of the three monsters (equipped skins show), bigger FIGHT, PVP ARENA, SKINS, HOW TO PLAY panel, compact Daily Hunt card. |
+| PVP Arena | RUN async PVP: after every hunt the team (monsters, skins, power from the best wave) is saved; the arena finds another player's team (or a labelled bot) and the AI plays it in the Blood Pit, one monster at a time, with tag-outs. Win +40 Souls, lose +10; results go through the server check (`rundot/simulation/pvp-system.json`). |
+| Trailer | `trailer/` (Remotion): gameplay captured from the game, 32 s promo on a 180 BPM grid with motion graphics, in 16:9 and 9:16. Video skills (remotion, motion-graphics) installed in `.claude/skills/`. |
+
 ## Architecture
 
 ![Code architecture: the simulation decides the fight; three.js only draws it](architecture.png)
@@ -110,13 +125,14 @@ Verified in the browser with `window.__ttt`: three-monster team and swaps, entry
 | Action | PC | Phone |
 | --- | --- | --- |
 | Move | W A S D or arrows | Left-thumb joystick |
-| Claw (special when the bar is full) | J or left click | CLAW button |
+| Claw | J or left click | CLAW button |
+| Special (cooldown) | E | SPECIAL button |
 | Dodge | Space, K or Shift | DODGE button |
 | Guard and counter | L or right click (tap: parry; hold: block) | GUARD button (tap or hold) |
 | Swap monster, Crimson Rain | 1, 2, 3 | Tap a portrait |
 | Start fight, retry | Enter (or Space on the menu) | FIGHT, Try again |
 | Back to menu | Esc | Menu button |
-| Transform (full bar) | Q (E is reserved for techniques) | TRNS button |
+| Transform (full bar) | Q | TRNS button |
 
 ## Done: hold-to-block guard and monster move sets (v1.4.0)
 
@@ -260,6 +276,8 @@ Run these from `D:\PROJECTS2\tag-team-terror`. The dev server must stay on local
 | Dev server without the RUN sign-in (RUN features mocked) | `NO_PLAYGROUND=1 npm run dev` (PowerShell: `$env:NO_PLAYGROUND=1; npm run dev`) |
 | Try a challenge link locally | open `http://localhost:5173/?beat=7&from=Jo` |
 | Rebuild sounds (after saving picks on the sound board) | `python -I tools/build-sfx.py` |
+| Trailer: capture footage (dev server running with `NO_PLAYGROUND=1`) | in `trailer/`: `node capture/capture.mjs landscape` (and `portrait`) |
+| Trailer: preview, render | in `trailer/`: `npm run dev`; `npx remotion render TrailerWide out/tag-team-terror-trailer-16x9.mp4` (and `TrailerTall`) |
 
 Dev-only console handle: `window.__ttt = { view, world, input }`. When the browser tab is hidden the frame loop pauses, so test by calling `__ttt.view.step(1/60)` in a loop. Every combat number lives in `src/game/tuning.ts`.
 

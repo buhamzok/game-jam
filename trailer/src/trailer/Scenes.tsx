@@ -329,8 +329,8 @@ export const Realms = ({ orient, scene, total, start }: SceneProps) => {
     const frame = useCurrentFrame();
     const { u, portrait } = useLayout();
     // the portal walk-in shows realms 1 -> 2; the montage shows 3 and 4
-    const idx = frame < 32 ? 0 : frame < 60 ? 1 : frame < 90 ? 2 : 3;
-    const swaps = [0, 32, 60, 90];
+    const idx = frame < 18 ? 0 : frame < 60 ? 1 : frame < 90 ? 2 : 3;
+    const swaps = [0, 18, 60, 90];
     const at = swaps[idx];
     return (
         <AbsoluteFill>

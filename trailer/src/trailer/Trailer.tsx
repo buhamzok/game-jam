@@ -114,7 +114,7 @@ export const Trailer = ({ orient }: TrailerProps) => {
             <Sfx at={s.tag + 32} src="pop" volume={0.5} />
             <Sfx at={s.moon + 10} src="impact" volume={0.6} />
             <Sfx at={s.boss + 4} src="dramatic-hit" volume={0.6} />
-            {[0, 32, 60, 90].map((f) => (
+            {[0, 18, 60, 90].map((f) => (
                 <Sfx key={f} at={s.realms + f} src="tick" volume={0.6} />
             ))}
             <Sfx at={s.pvp + 4} src="impact" volume={0.6} />
