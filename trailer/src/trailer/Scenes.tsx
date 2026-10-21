@@ -267,12 +267,12 @@ export const FullMoon = ({ orient, scene, total, start }: SceneProps) => {
                 }}
             />
             <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-end', paddingBottom: (portrait ? 300 : 120) * u }}>
-                <Slam at={10} style={heavy((portrait ? 170 : 170) * u, C.white)}>
+                <Slam at={10} style={heavy((portrait ? 128 : 170) * u, C.white)}>
                     FULL MOON
                 </Slam>
                 <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 58 * u, color: C.cream, opacity: seg(frame, 22, 30) }}>transform for 10 seconds</div>
                 <Mono u={u} style={{ marginTop: 12 * u, color: '#fca5a5', opacity: seg(frame, 34, 40) }}>
-                    RED EYES · SILVER CLAWS · +35% DAMAGE
+                    RED EYES · BLACK FUR · +35% DAMAGE
                 </Mono>
             </AbsoluteFill>
             <Hud scene={scene} total={total} start={start} label="TRANSFORM" />
@@ -296,7 +296,7 @@ export const Gravelord = ({ orient, scene, total, start }: SceneProps) => {
             </AbsoluteFill>
             <Shade from="bottom" strength={0.88} />
             <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-end', paddingBottom: (portrait ? 280 : 90) * u }}>
-                <Slam at={4} style={heavy((portrait ? 120 : 120) * u, C.cream)}>
+                <Slam at={4} style={heavy((portrait ? 96 : 120) * u, C.cream)}>
                     THE GRAVELORD
                 </Slam>
                 <Slam at={18} style={heavy((portrait ? 190 : 170) * u, C.blood)}>
@@ -379,7 +379,7 @@ export const Pvp = ({ orient, scene, total, start }: SceneProps) => {
                 <Mono u={u} style={{ color: '#fda4af', opacity: seg(frame, 2, 8) }}>
                     NEW MODE
                 </Mono>
-                <Slam at={4} style={heavy((portrait ? 190 : 200) * u, C.blood)}>
+                <Slam at={4} style={heavy((portrait ? 140 : 200) * u, C.blood)}>
                     PVP ARENA
                 </Slam>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 26 * u, marginTop: 18 * u }}>
