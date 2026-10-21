@@ -189,7 +189,7 @@ export class HeroView {
     private swingSerial = 0;
     /** 0..1, eases in while transformed: black wolf, red Stitched. */
     private transBlend = 0;
-    /** Full Moon: red eyes and silver claws on the Werewolf's bones. */
+    /** Full Moon: glowing red eyes on the Werewolf's head bone. */
     private readonly wolfForm: WolfForm | null;
     /** Equipped skin's idle aura (black/0 for the classic look). */
     private skinGlow = 0x000000;

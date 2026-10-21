@@ -17,13 +17,19 @@ async function boot() {
     //    Resolves even if init fails (local dev outside the RUN host).
     await initSdk();
 
-    // Dev-only asset tool (?tool=animate): runs instead of the game.
+    // Dev-only tools (?tool=animate for clips, ?tool=thumb for the tile art): run instead of the game.
     if (import.meta.env.DEV) {
         const params = new URLSearchParams(location.search);
         if (params.get('tool') === 'animate') {
             document.getElementById('boot-cover')?.remove();
             const { runGenTool } = await import('./dev/genTool.ts');
             await runGenTool(params);
+            return;
+        }
+        if (params.get('tool') === 'thumb') {
+            document.getElementById('boot-cover')?.remove();
+            const { runThumbTool } = await import('./dev/thumbTool.ts');
+            await runThumbTool();
             return;
         }
     }
@@ -39,7 +45,8 @@ async function boot() {
     try {
         const { loadDailyHunt } = await import('./sdk/dailyHunt.ts');
         const { loadSkins } = await import('./sdk/skinShop.ts');
-        await Promise.all([loadDailyHunt(), loadSkins()]);
+        const { loadProgress } = await import('./sdk/progress.ts');
+        await Promise.all([loadDailyHunt(), loadSkins(), loadProgress()]);
     } catch (err) {
         console.warn('[Main] Daily Hunt load failed (carrying on)', err);
     }

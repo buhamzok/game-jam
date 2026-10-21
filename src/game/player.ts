@@ -95,7 +95,15 @@ export class Player {
     /** Hunters already bitten by the current Swarm Slam. */
     private readonly bitten = new Set<number>();
 
-    constructor(private readonly w: World) {}
+    constructor(private readonly w: World) {
+        // stat points (Vitality) raise every monster's max HP
+        for (const m of this.team) m.hp = this.maxHp(m.kind);
+    }
+
+    /** Max HP of a team member, with the player's Vitality. */
+    maxHp(kind: MonsterKind): number {
+        return Math.round(T.monsters[kind].hp * this.w.boost.hp);
+    }
 
     // ---- team helpers ------------------------------------------------------
 
@@ -143,12 +151,12 @@ export class Player {
 
     addEnergy(n: number): void {
         const u = this.unit();
-        u.energy = Math.min(T.energy.max, u.energy + n);
+        u.energy = Math.min(T.energy.max, u.energy + n * this.w.boost.energy);
     }
 
     heal(n: number): void {
         const u = this.unit();
-        u.hp = Math.min(T.monsters[u.kind].hp, u.hp + n);
+        u.hp = Math.min(this.maxHp(u.kind), u.hp + n);
     }
 
     private enter(state: PState): void {
@@ -196,7 +204,7 @@ export class Player {
             case 'move':
                 if (this.trySwap() || this.tryTrans() || this.tryGuard() || this.tryDodge(mv) || this.trySpecial() || this.tryAttack(mv)) break;
                 if (moving) {
-                    const speed = this.d().speed * (this.w.witching > 0 ? T.witching.moveBuff : 1) * (this.transT > 0 && this.kind() === 'werewolf' ? T.trans.werewolf.speedMult : 1);
+                    const speed = this.d().speed * this.w.boost.speed * (this.w.witching > 0 ? T.witching.moveBuff : 1) * (this.transT > 0 && this.kind() === 'werewolf' ? T.trans.werewolf.speedMult : 1);
                     this.x += mv.x * speed * dt;
                     this.y += mv.y * speed * dt;
                     this.facing = Math.atan2(mv.y, mv.x);
@@ -473,7 +481,7 @@ export class Player {
     private startSpecial(): void {
         const p: PounceDef = this.d().special;
         const u = this.unit();
-        u.specialCd = this.d().specialCooldown;
+        u.specialCd = this.d().specialCooldown * this.w.boost.cooldown;
         this.specialLanded = false;
         this.bitten.clear();
         this.fromX = this.x;

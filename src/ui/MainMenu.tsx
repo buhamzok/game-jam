@@ -1,12 +1,15 @@
 /**
  * Title screen: the three monsters idle in the graveyard behind the menu
- * (MenuScene, wearing their equipped skins). FIGHT, SKINS and HOW TO PLAY up
- * front, a friend's challenge when there is one, and the Daily Hunt.
+ * (MenuScene, wearing their equipped skins). FIGHT, PVP, the level card
+ * (opens UPGRADES), SKINS and HOW TO PLAY up front, a friend's challenge when
+ * there is one, and the Daily Hunt.
  */
 import { useEffect, useRef, useState } from 'react';
 import { store, useStore } from '../state/store.ts';
 import { audio } from '../game/audio.ts';
 import { fetchDailyBoard } from '../sdk/dailyHunt.ts';
+import { freePoints } from '../sdk/progress.ts';
+import { LevelBar } from './Upgrades.tsx';
 
 function fight() {
     audio.play('click');
@@ -97,6 +100,7 @@ export default function MainMenu() {
     const challenge = useStore((s) => s.challenge);
     const souls = useStore((s) => s.souls);
     const inputMode = useStore((s) => s.inputMode);
+    const points = useStore((s) => freePoints(s));
     const [help, setHelp] = useState(false);
     useEffect(() => {
         void fetchDailyBoard();
@@ -164,6 +168,20 @@ export default function MainMenu() {
                     >
                         <span className="text-lg tracking-wider">{'\u2694'} PVP ARENA</span>
                         <span className="text-[11px] text-rose-100/80">fight a rival team</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        className={`relative rounded-xl bg-black/55 px-3 py-2 ring-1 backdrop-blur-sm transition-transform active:scale-[0.98] ${points > 0 ? 'ring-2 ring-amber-400/80' : 'ring-white/10'}`}
+                        onClick={() => {
+                            audio.play('click');
+                            store.patch({ phase: 'upgrades' });
+                        }}
+                    >
+                        <LevelBar compact />
+                        <span className={`absolute right-2 top-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-black tracking-wider ${points > 0 ? 'animate-pulse bg-amber-400 text-black' : 'bg-white/10 text-white/70'}`}>
+                            {points > 0 ? `${points} POINTS: UPGRADE` : 'UPGRADES'}
+                        </span>
                     </button>
 
                     <div className="grid grid-cols-2 gap-2.5">

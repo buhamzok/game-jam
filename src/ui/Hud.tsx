@@ -15,6 +15,7 @@ import { audio } from '../game/audio.ts';
 import { sdkReady } from '../sdk/runSdk.ts';
 import { telemetry } from '../sdk/dailyHunt.ts';
 import { sendChallenge } from '../sdk/challenge.ts';
+import { freePoints } from '../sdk/progress.ts';
 import portraitWerewolf from '../assets/portrait-werewolf.png';
 import portraitVampire from '../assets/portrait-vampire.png';
 import portraitStitched from '../assets/portrait-stitched.png';
@@ -133,6 +134,30 @@ function Portrait({ kind, slot, hp, hpMax, active, rainReady }: { kind: MonsterK
     );
 }
 
+/** End screen: XP this run, level-ups, and a way to spend the points. */
+function XpLine({ xp, levels, level, points }: { xp: number; levels: number; level: number; points: number }) {
+    if (xp <= 0 && points <= 0) return null;
+    return (
+        <div className="flex flex-col items-center gap-1.5">
+            <p className="text-sm font-black text-amber-200 tabular-nums">
+                +{xp} XP{levels > 0 ? ` · LEVEL UP! Now level ${level}` : ` · level ${level}`}
+            </p>
+            {points > 0 && (
+                <button
+                    type="button"
+                    className="animate-pulse rounded-xl bg-amber-400 px-5 py-2 text-sm font-black text-black shadow-[0_3px_0_#92400e] active:translate-y-0.5"
+                    onClick={() => {
+                        audio.play('click');
+                        store.patch({ phase: 'upgrades', gameOver: false });
+                    }}
+                >
+                    SPEND {points} STAT {points === 1 ? 'POINT' : 'POINTS'}
+                </button>
+            )}
+        </div>
+    );
+}
+
 function restart() {
     audio.play('click');
     const s = store.get();
@@ -191,6 +216,10 @@ export default function Hud() {
     const rival = useStore((s) => s.rival);
     const portalOpen = useStore((s) => s.portalOpen);
     const souls = useStore((s) => s.souls);
+    const level = useStore((s) => s.level);
+    const xpEarned = useStore((s) => s.xpEarned);
+    const levelsGained = useStore((s) => s.levelsGained);
+    const points = useStore((s) => freePoints(s));
     const [shareState, setShareState] = useState<'idle' | 'busy' | 'shared' | 'copied' | 'failed'>('idle');
     const [voteState, setVoteState] = useState<'idle' | 'opened' | 'copied' | 'failed'>('idle');
 
@@ -227,7 +256,10 @@ export default function Hud() {
                             {mode === 'pvp' ? `VS ${rival?.name ?? 'RIVAL'}` : `Wave ${wave}`}
                             {realmName && <span className="ml-1.5 text-[10px] font-black tracking-wider text-violet-300/80">{realmName.replace(/^THE /, '')}</span>}
                         </span>
-                        <span className="shrink-0">KOs {kills}</span>
+                        <span className="shrink-0">
+                            <span className="mr-1.5 rounded bg-amber-400/90 px-1 text-[10px] font-black text-black">LV {level}</span>
+                            KOs {kills}
+                        </span>
                     </div>
                     {portalOpen && <div className="animate-pulse text-center text-[10px] font-black tracking-[0.2em] text-violet-300">{'\u2728'} PORTAL OPEN: STEP IN</div>}
                     {challenge && (
@@ -305,6 +337,7 @@ export default function Hud() {
                             {'\u{1F47B}'} +{soulsEarned} Souls ({souls} total)
                         </p>
                     )}
+                    <XpLine xp={xpEarned} levels={levelsGained} level={level} points={points} />
                     <button
                         type="button"
                         className="w-60 rounded-2xl bg-gradient-to-b from-rose-400 to-rose-600 py-3.5 text-xl font-black text-white shadow-[0_5px_0_#881337] active:translate-y-1"
@@ -340,7 +373,7 @@ export default function Hud() {
             )}
 
             {gameOver && mode !== 'pvp' && (
-                <div className="pointer-events-auto absolute inset-0 flex flex-col items-center justify-center gap-6 bg-black/70 px-10">
+                <div className="pointer-events-auto absolute inset-0 flex flex-col items-center justify-center gap-4 overflow-y-auto bg-black/70 px-10 py-6">
                     <p className="text-5xl font-black tracking-wide text-red-400">HUNTED</p>
                     <p className="text-lg font-bold text-white/80 tabular-nums">
                         Wave {finalWave} · {finalKills} KOs
@@ -358,6 +391,7 @@ export default function Hud() {
                             {'\u{1F47B}'} +{soulsEarned} Souls ({souls} total): spend them on skins in the menu
                         </p>
                     )}
+                    <XpLine xp={xpEarned} levels={levelsGained} level={level} points={points} />
                     <p className="text-sm font-bold text-white/60 tabular-nums">
                         {dailyRank != null ? `Daily Hunts today: rank ${dailyRank}${dailyPlayers ? ` of ${dailyPlayers}` : ''}` : 'Daily Hunt: wave saved'}
                     </p>

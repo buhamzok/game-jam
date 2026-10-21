@@ -203,6 +203,7 @@ export class GameView {
         this.shownRealm = this.world.realmVersion;
         this.arena.dispose();
         this.arena = new Arena3D(this.scene, this.kaykitScale, this.world.realm);
+        this.fx.clearSplats();
         const p = this.world.player;
         this.camTarget.set(p.x * U, 0, p.y * U);
     }

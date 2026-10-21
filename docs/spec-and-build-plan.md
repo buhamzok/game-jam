@@ -12,7 +12,7 @@ Still to build: the shield knight and a boss, techniques (E), a Daily Hunt leade
 
 **Oct 21:** the boss fight, the fence fix, the friend challenge, the skin shop and realms (a portal after every boss) are built and tested in the browser on the GitHub branch `claude/fight-polish` ([buhamzok/game-jam](https://github.com/buhamzok/game-jam)). None of it is deployed yet.
 
-**Next session: merge `claude/fight-polish`, pull it on the PC, play it on a phone and a PC (boss phase 2, guards, the SPECIAL button, portals, the skin shop and the PVP Arena in the playground), then `npm run build` and `rundot deploy` (owner's call). The deploy also uploads `rundot/shop.config.json` and `rundot/simulation/pvp-system.json`. Post the trailer (`trailer/out/`) with the vote link.**
+**Next session: merge `claude/fight-polish`, pull it on the PC, play it on a phone and a PC (boss phase 2, guards, the SPECIAL button, portals, levels and upgrades, blood, the skin shop and the PVP Arena in the playground), then `npm run build` and `rundot deploy` (owner's call). The deploy also uploads `rundot/shop.config.json` and `rundot/simulation/pvp-system.json`. Post the trailer (`trailer/out/`) with the vote link.**
 
 - Project folder: `D:\PROJECTS2\tag-team-terror` (GitHub: [buhamzok/game-jam](https://github.com/buhamzok/game-jam))
 - RUN game ID: `Zo8tRIGBpGhAGb0XCXoI` (public; builds 1.0.0 to 1.5.0; entered in the October Jam)
@@ -95,11 +95,21 @@ Tested the same way (browser scenarios, a bot through two bosses and two portals
 | Phantom damage bug | The benched Vampire hit a random hunter for 6 every 2.2 s, anywhere on the map: hunters lost HP with nothing visibly hitting them. Removed (Crimson Rain stays). |
 | Special vs transform | Mashing claw no longer fires the special and empties the bar. Specials moved to their own button (E / SPECIAL) with a cooldown (9, 10, 11 s); only Q / TRNS spends the bar. |
 | Hunters guard | Knights, barbarians and the enraged Gravelord raise a blue shield now and then in answer to a swing (from wave 2): frontal hits are blocked; finishers, specials, counters and shocks break it (stun, extra damage), and so do 4 blocked hits or a hit from behind. Numbers in `T.hunter.guard`. |
-| Full Moon wolf | Glowing red eyes on the head bone and silver claws on both hands, grown in with the transformation (`src/game/view/wolfForm.ts`). |
+| Full Moon wolf | Glowing red eyes on the head bone, grown in with the transformation (`src/game/view/wolfForm.ts`). Silver claws were tried and removed (part 3). |
 | The Stitched | Calm idle (his idle clip opened with a turn-away and an overhead flex), natural follow-through after each punch, smoother returns to idle. |
 | Title screen | Live 3D lineup of the three monsters (equipped skins show), bigger FIGHT, PVP ARENA, SKINS, HOW TO PLAY panel, compact Daily Hunt card. |
 | PVP Arena | RUN async PVP: after every hunt the team (monsters, skins, power from the best wave) is saved; the arena finds another player's team (or a labelled bot) and the AI plays it in the Blood Pit, one monster at a time, with tag-outs. Win +40 Souls, lose +10; results go through the server check (`rundot/simulation/pvp-system.json`). |
 | Trailer | `trailer/` (Remotion): gameplay captured from the game, 32 s promo on a 180 BPM grid with motion graphics, in 16:9 and 9:16. Video skills (remotion, motion-graphics) installed in `.claude/skills/`. |
+
+## Built Oct 21, part 3 (same branch, not deployed yet)
+
+| Area | What changed |
+| --- | --- |
+| Blood | Hits on hunters spray a few dark-red droplets out the far side (more for heavier hits; bites and auras under 5 damage stay clean). Some land as splats that fade after 9 s (70 at most); a kill sprays more and leaves a pool. Cleared on each new realm. `Fx.blood`, `T.gore`, `GORE` in `fx3d.ts`. |
+| Levels and stats | Player level 1 to 30 from XP: 4 per KO, 10 + 2 x wave per cleared wave, 60 per Gravelord, 50 x realm number per portal, 60 / 20 per PVP win / loss; kill and wave XP pay 25% more per realm tier. Level 1 to 2 takes 55 XP, 29 to 30 takes 755 (11,745 in all). Each level gives 2 points for five stats (12 points max each, 58 points in all): Vitality +4% HP, Strength +3% damage, Agility +1.5% speed, Fury +5% transform bar gain, Focus -3% special cooldown. Boosts apply to the whole team in the hunt and PVP; RESET is free. UPGRADES screen from the menu's level card and the end screens; LEVEL N callout mid-run. PVP power now counts the level. `src/game/progression.ts`, `src/sdk/progress.ts`, `src/ui/Upgrades.tsx`. |
+| Harder realms | Each realm adds a danger tier on top of the wave scaling: +30% hunter HP, +15% damage, +3% speed, -5% attack cooldowns and one more hunter per tier (up to +3). The realm banner shows the danger level. `T.realmTier`. |
+| HUD fix | The HP bar's maximum was stuck at 100 (the Stitched's bar overflowed); it now follows the active monster's max HP. |
+| Thumbnail | New 512 x 512 tile: the Full Moon wolf (red eyes), the Vampire and the Stitched in the graveyard under a blood moon, with the trailer's title type. Rebuild: `?tool=thumb` (dev only) plus the `Thumbnail` composition in `trailer/`. |
 
 ## Architecture
 

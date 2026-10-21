@@ -15,6 +15,7 @@ import {
     Mesh,
     MeshBasicMaterial,
     NormalBlending,
+    PlaneGeometry,
     Points,
     RingGeometry,
     ShaderMaterial,
@@ -22,7 +23,7 @@ import {
     SpriteMaterial,
     type Blending,
 } from 'three';
-import type { Fx, SoundOpts } from '../fxTypes.ts';
+import { C, type Fx, type SoundOpts } from '../fxTypes.ts';
 import { audio, type SfxName } from '../audio.ts';
 
 /** Meters per sim unit. */
@@ -40,7 +41,7 @@ class ParticleLayer {
     private readonly alpha = new Float32Array(MAX_PARTICLES);
     private readonly geo = new BufferGeometry();
     private readonly mat: ShaderMaterial;
-    private list: { x: number; y: number; z: number; vx: number; vy: number; vz: number; drag: number; size: number; r: number; g: number; b: number; life: number; max: number; shrink: boolean; peak: number }[] = [];
+    private list: { x: number; y: number; z: number; vx: number; vy: number; vz: number; drag: number; size: number; r: number; g: number; b: number; life: number; max: number; shrink: boolean; peak: number; gravity: number; land?: (x: number, z: number) => void }[] = [];
 
     constructor(blending: Blending) {
         this.geo.setAttribute('position', new BufferAttribute(this.pos, 3));
@@ -84,9 +85,10 @@ class ParticleLayer {
         this.mat.uniforms.uProj.value = v;
     }
 
-    add(x: number, y: number, z: number, vx: number, vy: number, vz: number, drag: number, size: number, color: Color, life: number, shrink: boolean, peak = 1): void {
+    /** `land` turns the particle into a ground hit: it is called once where it touches down, and the particle ends. */
+    add(x: number, y: number, z: number, vx: number, vy: number, vz: number, drag: number, size: number, color: Color, life: number, shrink: boolean, peak = 1, gravity = 3, land?: (x: number, z: number) => void): void {
         if (this.list.length >= MAX_PARTICLES) this.list.shift();
-        this.list.push({ x, y, z, vx, vy, vz, drag, size, r: color.r, g: color.g, b: color.b, life, max: life, shrink, peak });
+        this.list.push({ x, y, z, vx, vy, vz, drag, size, r: color.r, g: color.g, b: color.b, life, max: life, shrink, peak, gravity, land });
     }
 
     update(dt: number): void {
@@ -98,10 +100,15 @@ class ParticleLayer {
                 const k = Math.exp(-p.drag * dt);
                 p.vx *= k;
                 p.vz *= k;
-                p.vy = p.vy * k - 3 * dt;
+                p.vy = p.vy * k - p.gravity * dt;
                 if (p.y < 0.05) {
                     p.y = 0.05;
                     p.vy = 0;
+                    if (p.land) {
+                        p.land(p.x, p.z);
+                        p.land = undefined;
+                        p.life = 0;
+                    }
                 }
                 p.life -= dt;
             }
@@ -128,6 +135,53 @@ class ParticleLayer {
         this.geo.dispose();
         this.mat.dispose();
     }
+}
+
+/** An irregular blood splat (a blob with a few satellite drops), white so the material tints it. */
+function splatTexture(seed: number): CanvasTexture {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    let s = seed * 9301 + 49297;
+    const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+    g.fillStyle = '#fff';
+    g.beginPath();
+    const n = 14;
+    for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const r = 14 + rnd() * 9;
+        const px = 32 + Math.cos(a) * r;
+        const py = 32 + Math.sin(a) * r;
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
+    }
+    g.fill();
+    for (let i = 0; i < 6; i++) {
+        const a = rnd() * Math.PI * 2;
+        const d = 22 + rnd() * 8;
+        g.beginPath();
+        g.arc(32 + Math.cos(a) * d, 32 + Math.sin(a) * d, 1.5 + rnd() * 2.5, 0, Math.PI * 2);
+        g.fill();
+    }
+    return new CanvasTexture(c);
+}
+
+/** How blood looks and how long it stays (meters and seconds). */
+const GORE = {
+    /** Splats on the ground at once; the oldest goes first. */
+    maxSplats: 70,
+    splatLife: 9,
+    /** Splats fade out over this last part of their life. */
+    splatFade: 2.5,
+    splatOpacity: 0.78,
+    dropLife: 0.9,
+    dropGravity: 9,
+};
+
+interface Splat {
+    mesh: Mesh;
+    mat: MeshBasicMaterial;
+    life: number;
 }
 
 interface Timed {
@@ -170,9 +224,13 @@ export class Fx3D implements Fx {
     private readonly soft = new ParticleLayer(NormalBlending);
     private timed: Timed[] = [];
     private readonly tmpColor = new Color();
+    private readonly splatTex = [splatTexture(1), splatTexture(2), splatTexture(3)];
+    private readonly splatGeo = new PlaneGeometry(1, 1);
+    private splats: Splat[] = [];
 
     constructor() {
         this.group.add(this.soft.points, this.glow.points);
+        this.splatGeo.rotateX(-Math.PI / 2);
     }
 
     setProjection(v: number): void {
@@ -202,6 +260,53 @@ export class Fx3D implements Fx {
     trail(x: number, y: number, color: number, size: number, life = 0.25): void {
         this.tmpColor.setHex(color);
         this.soft.add(x * U, 0.6, y * U, 0, 0, 0, 0, size * U * 3, this.tmpColor, life, false, 0.4);
+    }
+
+    blood(x: number, y: number, angle: number, amount = 1, kill = false): void {
+        const drops = Math.round(Math.min(14, (kill ? 12 : 3) + amount * 4));
+        const fresh = this.tmpColor.setHex(C.gore).clone();
+        // a few drops turn into splats; the rest are just spray
+        let splatsLeft = kill ? 5 : Math.min(3, 1 + Math.round(amount));
+        for (let i = 0; i < drops; i++) {
+            const a = angle + (Math.random() - 0.5) * (kill ? 2.6 : 1.3);
+            const s = (kill ? 2.6 : 1.8) * (0.4 + Math.random() * 0.8);
+            const land = splatsLeft-- > 0 ? (lx: number, lz: number) => this.addSplat(lx, lz, 0.1 + Math.random() * 0.12, C.gore) : undefined;
+            this.soft.add(x * U, FX_Y * (0.7 + Math.random() * 0.4), y * U, Math.cos(a) * s, 0.8 + Math.random() * 1.8, Math.sin(a) * s, 1.5, (2.2 + Math.random() * 2.5) * U * 2.4, fresh, GORE.dropLife, false, 1, GORE.dropGravity, land);
+        }
+        if (kill) {
+            // a pool under the body
+            this.addSplat(x * U, y * U, 0.55 + Math.random() * 0.2, C.goreDark);
+        }
+    }
+
+    private addSplat(x: number, z: number, size: number, color: number): void {
+        if (this.splats.length >= GORE.maxSplats) this.removeSplat(this.splats.shift()!);
+        const mat = new MeshBasicMaterial({
+            map: this.splatTex[Math.floor(Math.random() * this.splatTex.length)],
+            color,
+            transparent: true,
+            opacity: GORE.splatOpacity,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -2,
+        });
+        const mesh = new Mesh(this.splatGeo, mat);
+        mesh.position.set(x, 0.02 + this.splats.length * 0.0002, z);
+        mesh.rotation.y = Math.random() * Math.PI * 2;
+        mesh.scale.set(size * (0.8 + Math.random() * 0.5), 1, size * (0.8 + Math.random() * 0.5));
+        this.group.add(mesh);
+        this.splats.push({ mesh, mat, life: GORE.splatLife });
+    }
+
+    private removeSplat(sp: Splat): void {
+        sp.mesh.removeFromParent();
+        sp.mat.dispose();
+    }
+
+    /** Clear the ground (a new realm). */
+    clearSplats(): void {
+        for (const sp of this.splats) this.removeSplat(sp);
+        this.splats = [];
     }
 
     slash(x: number, y: number, angle: number, radius: number, spreadRad: number, color: number, width = 12, life = 0.14): void {
@@ -356,6 +461,11 @@ export class Fx3D implements Fx {
         for (const e of this.timed) {
             if (e.life <= 0) this.disposeTimed(e);
         }
+        for (const sp of this.splats) {
+            sp.life -= realDt;
+            sp.mat.opacity = GORE.splatOpacity * Math.min(1, sp.life / GORE.splatFade);
+        }
+        while (this.splats.length && this.splats[0].life <= 0) this.removeSplat(this.splats.shift()!);
         this.timed = this.timed.filter((e) => e.life > 0);
     }
 
@@ -374,6 +484,9 @@ export class Fx3D implements Fx {
     dispose(): void {
         for (const e of this.timed) this.disposeTimed(e);
         this.timed = [];
+        this.clearSplats();
+        this.splatGeo.dispose();
+        for (const t of this.splatTex) t.dispose();
         this.glow.dispose();
         this.soft.dispose();
         this.group.removeFromParent();

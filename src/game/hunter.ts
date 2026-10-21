@@ -103,6 +103,8 @@ export class Hunter {
     private kvx = 0;
     private kvy = 0;
     private sinceHit = 99;
+    /** Direction of the last hit (attacker to this hunter), for the death spray. */
+    private lastHitAngle = 0;
     private orbitSign = Math.random() < 0.5 ? -1 : 1;
     /** Boss: how many attacks since the last quake (the quake re-fires after quakeEvery). */
     private bossMoves = 0;
@@ -504,13 +506,20 @@ export class Hunter {
             }
         }
         if (this.state === 'broken') dmg *= T.hunter.breakDamageMult;
+        // the player's Strength points
+        dmg *= this.w.boost.dmg;
         this.hp -= dmg;
         this.sinceHit = 0;
         this.flashT = 0.09;
         const ks = this.def.boss ? T.boss.knockScale : 1;
         this.kvx += Math.cos(opts.angle) * opts.knock * ks;
         this.kvy += Math.sin(opts.angle) * opts.knock * ks;
-        if (dmg > 0) this.w.fx.text(this.x, this.y, String(Math.round(dmg)), this.state === 'broken' ? C.counter : 0xffffff, 28, 0.6);
+        if (dmg > 0) {
+            this.w.fx.text(this.x, this.y, String(Math.round(dmg)), this.state === 'broken' ? C.counter : 0xffffff, 28, 0.6);
+            // a spurt of blood out the far side, bigger for heavier hits
+            if (dmg >= T.gore.minDamage) this.w.fx.blood(this.x, this.y, opts.angle, Math.min(T.gore.maxAmount, dmg / T.gore.damagePerUnit));
+            this.lastHitAngle = opts.angle;
+        }
 
         if (this.hp <= 0) {
             this.die();
@@ -567,6 +576,7 @@ export class Hunter {
         this.atk = null;
         this.enter('dead');
         this.w.fx.sound('enemyDeath', { x: this.x });
+        this.w.fx.blood(this.x, this.y, this.lastHitAngle, 1.5, true);
         this.w.fx.burst(this.x, this.y, C.hunter, 18, 420, 7, 0.5, false);
         this.w.fx.burst(this.x, this.y, C.spark, 12, 360, 5, 0.35);
         this.w.onHunterKilled();

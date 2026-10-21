@@ -31,9 +31,9 @@ export interface Rival {
 const MONSTERS: MonsterKind[] = ['werewolf', 'vampire', 'stitched'];
 const BOT_NAMES = ['Moonfang', 'Count Grimsby', 'Old Bolt', 'Lady Nocturne', 'Graverattle', 'Hollow Jack', 'Mistress Mire', 'Baron Bones'];
 
-/** Team power from the best wave: what matchmaking and the battle report compare. */
-export function teamPower(bestWave: number): number {
-    return 100 + Math.max(0, bestWave) * 12;
+/** Team power from the best wave and the player level: what matchmaking and the battle report compare. */
+export function teamPower(bestWave: number, level = 1): number {
+    return 100 + Math.max(0, bestWave) * 12 + Math.max(0, level - 1) * 10;
 }
 
 function myName(): string {
@@ -50,7 +50,7 @@ function myName(): string {
 export async function snapshotTeam(): Promise<void> {
     if (!sdkReady()) return;
     const s = store.get();
-    const power = teamPower(s.bestWave);
+    const power = teamPower(s.bestWave, s.level);
     const owner = myName();
     const units = MONSTERS.map((monster, position) => {
         const skin = s.equippedSkins[monster];
@@ -99,7 +99,7 @@ function parseUnits(raw: unknown): { units: RivalUnit[]; name: string; power: nu
 
 /** Find a human rival's saved team, or fall back to a bot. Never rejects. */
 export async function findRival(): Promise<Rival> {
-    const mine = teamPower(store.get().bestWave);
+    const mine = teamPower(store.get().bestWave, store.get().level);
     if (sdkReady()) {
         try {
             const found = await RundotGameAPI.simulation.executeRecipeAsync('pvp_find_opponent');
@@ -128,7 +128,7 @@ export async function reportBattle(win: boolean, rival: Rival): Promise<boolean>
     try {
         const r = await RundotGameAPI.simulation.executeRecipeAsync('pvp_report_battle', {
             result: win ? 1 : 0,
-            myPower: teamPower(store.get().bestWave),
+            myPower: teamPower(store.get().bestWave, store.get().level),
             opponentPower: rival.power,
         });
         return r.success;

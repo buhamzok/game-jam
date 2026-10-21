@@ -13,6 +13,7 @@ import Hud from './Hud.tsx';
 import Controls from './Controls.tsx';
 import SkinShop from './SkinShop.tsx';
 import PvpLobby from './PvpLobby.tsx';
+import Upgrades from './Upgrades.tsx';
 import GameCanvas from '../game/GameCanvas.tsx';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
             {phase === 'menu' && <MainMenu />}
             {phase === 'skins' && <SkinShop />}
             {phase === 'pvp' && <PvpLobby />}
+            {phase === 'upgrades' && <Upgrades />}
             {phase === 'playing' && (
                 <div className="absolute inset-0">
                     {/* key: a new runId remounts the canvas, which restarts the run */}

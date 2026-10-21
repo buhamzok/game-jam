@@ -20,8 +20,8 @@ export interface TeamMember {
 
 /** The UI-facing app state. */
 export interface AppState {
-    /** 'loading' → 'menu' → 'playing' (or 'skins', the shop, and 'pvp', the arena lobby, from the menu) */
-    phase: 'loading' | 'menu' | 'playing' | 'skins' | 'pvp';
+    /** 'loading' → 'menu' → 'playing' (or 'skins', the shop, 'pvp', the arena lobby, and 'upgrades', stat points, from the menu) */
+    phase: 'loading' | 'menu' | 'playing' | 'skins' | 'pvp' | 'upgrades';
     /** 0..1 progress of the critical-asset warm during 'loading' */
     loadProgress: number;
     /** Set by the host's onPause/onResume lifecycle hooks */
@@ -112,6 +112,15 @@ export interface AppState {
     rival: import('../sdk/pvp.ts').Rival | null;
     /** PVP outcome once the match ends (null while fighting or in the hunt). */
     pvpResult: 'win' | 'loss' | null;
+    /** Total XP, the level it gives (1..30) and the stat points spent (see game/progression.ts). */
+    xp: number;
+    level: number;
+    stats: import('../game/progression.ts').StatPoints;
+    /** XP and levels gained this run (end screen); reset when a run starts. */
+    xpEarned: number;
+    levelsGained: number;
+    /** Current realm danger tier (0 for the first realm). */
+    realmTier: number;
     /** Current realm (map) name, and whether its exit portal is open. */
     realmName: string;
     portalOpen: boolean;
@@ -178,6 +187,12 @@ let state: AppState = {
     shopPrices: {},
     realmName: '',
     portalOpen: false,
+    xp: 0,
+    level: 1,
+    stats: { vitality: 0, strength: 0, agility: 0, fury: 0, focus: 0 },
+    xpEarned: 0,
+    levelsGained: 0,
+    realmTier: 0,
     mode: 'hunt',
     rival: null,
     pvpResult: null,

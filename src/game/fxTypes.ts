@@ -35,6 +35,12 @@ export interface Fx {
     text(x: number, y: number, str: string, color?: number, size?: number, life?: number): void;
     shake(amount: number): void;
     freeze(seconds: number): void;
+    /**
+     * A small spurt of blood from a hit at (x, y): droplets fly along `angle`
+     * (attacker to target) and leave splats where they land. `amount` scales
+     * the spurt (1 = a normal claw hit); `kill` adds a pool and a bigger spray.
+     */
+    blood(x: number, y: number, angle: number, amount?: number, kill?: boolean): void;
     /** Screen-wide color flash. */
     flash(color: number, alpha: number): void;
     /** Play a named sound event (see tools/sfx-kit.json). */
@@ -59,4 +65,7 @@ export const C = {
     overcharge: 0xff3b3b,
     /** Vampire bats. */
     bat: 0x9f1239,
+    /** Gore: fresh droplets and dried splats. */
+    gore: 0x9b0a14,
+    goreDark: 0x4a0408,
 };

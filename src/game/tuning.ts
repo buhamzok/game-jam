@@ -359,6 +359,8 @@ export const T = {
 
     /** Reflected bolts (parried) fly back this much faster and hit for this. */
     reflect: { speedMult: 1.3, dmg: 30, poise: 40 },
+    /** Blood on hits: hits under minDamage (bat nibbles, auras) stay clean; amount = dmg / damagePerUnit, capped. */
+    gore: { minDamage: 5, damagePerUnit: 14, maxAmount: 2.5 },
 
     hunter: {
         radius: 30,
@@ -416,6 +418,13 @@ export const T = {
         /** A Gravelord rises every this many waves. */
         bossEvery: 5,
     },
+    /**
+     * Each realm (map) is harder than the last, on top of the wave scaling:
+     * realm N+1 multiplies hunter HP by 1 + hp * N and damage by 1 + dmg * N,
+     * adds `hunters` per realm (up to extraMax) and sharpens their timing.
+     * Tier counts realms entered (it keeps rising on the second lap), up to `cap`.
+     */
+    realmTier: { hp: 0.3, dmg: 0.15, speed: 0.03, cooldown: 0.05, hunters: 1, extraMax: 3, cap: 10 },
     /** Player sits at this fraction of screen height; the bottom is under the thumbs. */
     camera: { anchorY: 0.4, lerp: 8 },
 

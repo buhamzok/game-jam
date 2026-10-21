@@ -19,6 +19,8 @@ import { SOULS } from './skins.ts';
 import { REALMS, PORTAL, BLOOD_PIT, type RealmDef } from './realms.ts';
 import type { RivalSpec } from './hunter.ts';
 import { teamPower, type Rival } from '../sdk/pvp.ts';
+import { XP, boostsFor, type Boosts } from './progression.ts';
+import { addXp } from '../sdk/progress.ts';
 
 /** Each monster's pain voice, transformation voice and swing. */
 const HURT_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfHurt', vampire: 'vampHurt', stitched: 'stitchHurt' };
@@ -116,19 +118,23 @@ export class World {
     private rivalQueue: (RivalSpec & { tagged?: boolean })[] = [];
     private rivalTimer = 0;
 
+    /** The player's stat points as multipliers (fixed for the run; points are spent between runs). */
+    readonly boost: Boosts;
+
     constructor(readonly fx: Fx) {
         const s = store.get();
+        this.boost = boostsFor(s.stats);
         this.mode = s.mode === 'pvp' && s.rival ? 'pvp' : 'hunt';
         if (this.mode === 'pvp') {
             this.realm = BLOOD_PIT;
             this.rivalTeam = s.rival;
-            const mult = Math.max(T.rival.powerScale[0], Math.min(T.rival.powerScale[1], s.rival!.power / teamPower(s.bestWave)));
+            const mult = Math.max(T.rival.powerScale[0], Math.min(T.rival.powerScale[1], s.rival!.power / teamPower(s.bestWave, s.level)));
             this.rivalQueue = s.rival!.units.map((u) => ({ monster: u.monster, skin: u.skin, hpMult: mult }));
             this.rivalTimer = 2.2;
         }
         this.player = new Player(this);
         this.player.y = this.realm.arena.h * 0.22;
-        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null });
+        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: 0 });
         if (this.mode === 'pvp') {
             const r = s.rival!;
             store.patch({ banner: `VS ${r.name.toUpperCase()}`, bannerSub: r.bot ? 'A bot team (no rival found yet)' : `Their tag team, played by the AI` });
@@ -201,6 +207,7 @@ export class World {
         }
         store.patch({ gameOver: true, pvpResult: win ? 'win' : 'loss', finalWave: 0, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls });
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
+        this.gainXp(win ? XP.pvpWin : XP.pvpLoss);
         const rival = this.rivalTeam!;
         void import('../sdk/pvp.ts').then((p) => p.reportBattle(win, rival)).catch(() => undefined);
     }
@@ -236,6 +243,32 @@ export class World {
             }
         }
         return best;
+    }
+
+    // ---- progression ---------------------------------------------------------
+
+    /** Realm danger tier: 0 in the first realm, +1 per portal taken (capped). */
+    tier(): number {
+        return Math.min(T.realmTier.cap, this.realmIndex);
+    }
+
+    /** Kill and wave XP grow with the realm tier. */
+    private tierXp(n: number): number {
+        return n * (1 + XP.tierBonus * this.tier());
+    }
+
+    /** Bank XP right away (so quitting keeps it); a level-up gets a callout over the player. */
+    gainXp(n: number): void {
+        const ups = addXp(n);
+        if (ups <= 0) return;
+        const p = this.player;
+        const s = store.get();
+        store.patch({ levelsGained: s.levelsGained + ups });
+        this.fx.text(p.x, p.y - 140, `LEVEL ${s.level}!`, 0xfde68a, 46, 1.6);
+        this.fx.ring(p.x, p.y, p.r, 300, 0xfde68a, 14, 0.7);
+        this.fx.burst(p.x, p.y, 0xfde68a, 26, 480, 7, 0.7);
+        this.fx.sound('parry', { volume: 0.9 });
+        this.fx.sound('bell', { delay: 0.15, volume: 0.7 });
     }
 
     /** Damage multiplier on everything the active monster deals: Lightning Rod and transformations. */
@@ -420,6 +453,7 @@ export class World {
     onBossKilled(h: Hunter): void {
         const p = this.player;
         this.bossKills++;
+        this.gainXp(this.tierXp(XP.boss));
         this.fx.freeze(0.45);
         this.fx.flash(0xffffff, 0.6);
         this.fx.shake(1);
@@ -434,7 +468,7 @@ export class World {
         for (const o of this.hunters) if (o !== h) o.crumble();
         for (const m of p.team) {
             if (!m.alive) continue;
-            m.hp = Math.min(T.monsters[m.kind].hp, m.hp + T.monsters[m.kind].hp * T.boss.killHeal);
+            m.hp = Math.min(p.maxHp(m.kind), m.hp + p.maxHp(m.kind) * T.boss.killHeal);
             m.energy = T.energy.max;
         }
         this.fx.text(p.x, p.y - 90, `+${Math.round(T.boss.killHeal * 100)}% HP`, C.rod, 32, 1.4);
@@ -608,7 +642,7 @@ export class World {
             const t = T.trans.stitched;
             for (const m of p.team) {
                 if (!m.alive) continue;
-                m.hp = Math.min(T.monsters[m.kind].hp, m.hp + T.monsters[m.kind].hp * t.teamHealFrac);
+                m.hp = Math.min(p.maxHp(m.kind), m.hp + p.maxHp(m.kind) * t.teamHealFrac);
             }
             for (const h of this.hunters) {
                 if (!h.targetable) continue;
@@ -840,6 +874,7 @@ export class World {
 
     onHunterKilled(): void {
         this.kills++;
+        if (this.mode === 'hunt') this.gainXp(this.tierXp(XP.kill));
         // three kills in two seconds: the announcer calls it
         this.killTimes = this.killTimes.filter((t) => this.clock - t < 2);
         this.killTimes.push(this.clock);
@@ -971,14 +1006,24 @@ export class World {
         const n = Math.max(0, this.wave - 1);
         const f = (s: { step: number; cap: number }) => (s.step >= 0 ? Math.min(s.cap, 1 + s.step * n) : Math.max(s.cap, 1 + s.step * n));
         const d = T.difficulty;
-        return { hp: f(d.hp), dmg: f(d.dmg), speed: f(d.speed), windup: f(d.windup), cooldown: f(d.cooldown) };
+        // each realm is harder than the last, on top of the wave scaling
+        const r = T.realmTier;
+        const k = this.tier();
+        return {
+            hp: f(d.hp) * (1 + r.hp * k),
+            dmg: f(d.dmg) * (1 + r.dmg * k),
+            speed: f(d.speed) * (1 + r.speed * k),
+            windup: f(d.windup),
+            cooldown: f(d.cooldown) * Math.max(0.6, 1 - r.cooldown * k),
+        };
     }
 
     /** Who spawns this wave; boss waves cut the small roster so the duel stays readable. */
     private roster(): HunterKind[] {
         const w = this.wave;
         const d = T.difficulty;
-        let count = Math.min(T.waves.max, T.waves.base + (w - 1) * T.waves.perWave);
+        const extra = Math.min(T.realmTier.extraMax, this.tier() * T.realmTier.hunters);
+        let count = Math.min(T.waves.max + extra, T.waves.base + (w - 1) * T.waves.perWave + extra);
         if (isBossWave(w) && count > 3) count = 3;
         const mages = w >= d.mageFrom ? Math.min(2, 1 + Math.floor((w - d.mageFrom) / 2)) : 0;
         const rogues = w >= d.rogueFrom ? Math.min(2, 1 + Math.floor((w - d.rogueFrom) / 2)) : 0;
@@ -1007,6 +1052,7 @@ export class World {
         if (!this.waveCleared) {
             // wave cleared: a flawless one gets its own call
             this.waveCleared = true;
+            if (this.wave > 0) this.gainXp(this.tierXp(XP.wave + XP.perWave * this.wave));
             if (!this.waveHurt && this.wave > 0) this.fx.sound('vo_flawless', { delay: 0.3 });
             if (this.wave > 0 && !isBossWave(this.wave)) {
                 const p = this.player;
@@ -1086,6 +1132,8 @@ export class World {
     /** Step through: new map, player at the near end, waves carry on after a beat. */
     private enterRealm(): void {
         this.realmIndex++;
+        // finishing a realm pays XP by how deep it was
+        this.gainXp(XP.realm * this.realmIndex);
         this.realm = REALMS[this.realmIndex % REALMS.length];
         this.realmVersion++;
         this.portal = null;
@@ -1100,11 +1148,13 @@ export class World {
         this.fx.sound('witching');
         this.fx.sound('rumble', { delay: 0.2, volume: 0.6 });
         const lap = Math.floor(this.realmIndex / REALMS.length);
+        const k = this.tier();
         store.patch({
             banner: this.realm.name + (lap > 0 ? ` ${'I'.repeat(Math.min(3, lap + 1))}` : ''),
-            bannerSub: this.realm.sub,
+            bannerSub: `${this.realm.sub} · DANGER ${k + 1}: hunters +${Math.round(T.realmTier.hp * k * 100)}% HP, +${Math.round(T.realmTier.dmg * k * 100)}% damage`,
             realmName: this.realm.name,
             portalOpen: false,
+            realmTier: k,
         });
         this.bannerTimer = PORTAL.banner;
         void import('../sdk/dailyHunt.ts').then((h) => h.telemetry('realm_enter', { realm: this.realm.id, wave: this.wave })).catch(() => undefined);
@@ -1218,7 +1268,8 @@ export class World {
                 energy: next.energy,
                 transReady: next.special,
                 specialCd: next.specialCd,
-                specialCdMax: T.monsters[u.kind].specialCooldown,
+                specialCdMax: T.monsters[u.kind].specialCooldown * this.boost.cooldown,
+                hpMax: p.maxHp(u.kind),
                 perfectReady: next.perfect,
                 witching: next.witching,
                 wave: next.wave,
@@ -1231,7 +1282,7 @@ export class World {
                 trans: next.trans,
                 transLeft: next.transLeft,
                 transLabel: next.trans ? T.trans[u.kind].label : '',
-                team: p.team.map((m) => ({ kind: m.kind, hp: Math.ceil(m.hp), hpMax: T.monsters[m.kind].hp, alive: m.alive })),
+                team: p.team.map((m) => ({ kind: m.kind, hp: Math.ceil(m.hp), hpMax: p.maxHp(m.kind), alive: m.alive })),
                 bossHp: next.boss
                     ? {
                           frac: Math.min(1, Math.max(0, Number(next.boss.split('|')[0]) / Number(next.boss.split('|')[1]))),

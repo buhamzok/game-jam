@@ -20,7 +20,7 @@ const KEY_SOULS = 'ttt.souls';
 const KEY_SKINS = 'ttt.skins';
 const KEY_EQUIP = 'ttt.equip';
 
-async function cacheGet(key: string): Promise<string | null> {
+export async function cacheGet(key: string): Promise<string | null> {
     if (!sdkReady()) return null;
     try {
         return await RundotGameAPI.deviceCache.getItem(key);
@@ -29,12 +29,12 @@ async function cacheGet(key: string): Promise<string | null> {
     }
 }
 
-function cacheSet(key: string, value: string): void {
+export function cacheSet(key: string, value: string): void {
     if (!sdkReady()) return;
     RundotGameAPI.deviceCache.setItem(key, value).catch(() => undefined);
 }
 
-function parseJson<T>(raw: string | null, fallback: T): T {
+export function parseJson<T>(raw: string | null, fallback: T): T {
     if (!raw) return fallback;
     try {
         return JSON.parse(raw) as T;

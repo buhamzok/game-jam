@@ -34,6 +34,15 @@ Beat sheet and timing: the comment at the top of `src/trailer/Trailer.tsx`. The 
 
    Check frames quickly with `node capture/stills.mjs TrailerWide 120,400,800 out/sheet.png`.
 
+## Game tile (public/thumbnail.jpg)
+
+```bash
+# game dev server running (NO_PLAYGROUND=1 npm run dev)
+node capture/thumb.mjs                       # 3D art -> public/thumb-art.png (poses: DEFAULT_SHOT in src/dev/thumbTool.ts)
+npx remotion still Thumbnail out/thumb-1024.png
+ffmpeg -i out/thumb-1024.png -vf scale=512:512:flags=lanczos -q:v 2 ../public/thumbnail.jpg
+```
+
 ## Assets
 
 - Fonts in `public/fonts` (Archivo Black, Instrument Serif, JetBrains Mono; SIL OFL, from @fontsource) so renders never need the network.
