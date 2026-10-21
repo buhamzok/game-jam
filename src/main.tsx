@@ -38,7 +38,8 @@ async function boot() {
     //    streak and device settings from the cache here.
     try {
         const { loadDailyHunt } = await import('./sdk/dailyHunt.ts');
-        await loadDailyHunt();
+        const { loadSkins } = await import('./sdk/skinShop.ts');
+        await Promise.all([loadDailyHunt(), loadSkins()]);
     } catch (err) {
         console.warn('[Main] Daily Hunt load failed (carrying on)', err);
     }

@@ -17,6 +17,7 @@ export default function MainMenu() {
     const bestWave = useStore((s) => s.bestWave);
     const streak = useStore((s) => s.streak);
     const challenge = useStore((s) => s.challenge);
+    const souls = useStore((s) => s.souls);
     useEffect(() => {
         void fetchDailyBoard();
     }, []);
@@ -56,6 +57,17 @@ export default function MainMenu() {
                 onClick={fight}
             >
                 {challenge ? 'ACCEPT' : 'FIGHT'}
+            </button>
+
+            <button
+                type="button"
+                className="rounded-xl bg-violet-600/80 px-6 py-2 text-sm font-black text-white shadow transition-transform active:scale-95"
+                onClick={() => {
+                    audio.play('click');
+                    store.patch({ phase: 'skins' });
+                }}
+            >
+                {'\u{1F3A8}'} SKINS <span className="ml-1 text-violet-200 tabular-nums">{'\u{1F47B}'} {souls}</span>
             </button>
 
             <div className="w-full max-w-xs rounded-2xl bg-black/40 p-3 text-sm font-bold">

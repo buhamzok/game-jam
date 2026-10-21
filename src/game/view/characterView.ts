@@ -72,6 +72,8 @@ export class CharacterView {
     private flashColor = new Color();
     /** Material colors as loaded, so tints can be undone. */
     private readonly baseColors: Color[] = [];
+    /** Skin recolor uniforms, shared by this character's materials (installed on first setSkin). */
+    private skinUniforms: { uSkinColor: { value: Color }; uSkinAmount: { value: number } } | null = null;
     private readonly tintColor = new Color();
     private tintKey = '';
     private readonly baseScale: number;
@@ -167,6 +169,36 @@ export class CharacterView {
         this.materials.forEach((m, i) => {
             if (m.color) m.color.copy(this.baseColors[i]).lerp(this.tintColor, amount);
         });
+    }
+
+    /**
+     * Cosmetic skin: recolor the surface toward `color` by `amount` (0 = classic).
+     * The shader keeps each texel's brightness and swaps its hue, so texture
+     * detail survives and light skins work on dark fur too. Tints and glows
+     * (hit flash, transformations) still apply on top.
+     */
+    setSkin(color: number, amount: number): void {
+        if (!this.skinUniforms) {
+            if (amount <= 0) return;
+            const u = { uSkinColor: { value: new Color() }, uSkinAmount: { value: 0 } };
+            this.skinUniforms = u;
+            for (const m of this.materials) {
+                m.onBeforeCompile = (shader) => {
+                    shader.uniforms.uSkinColor = u.uSkinColor;
+                    shader.uniforms.uSkinAmount = u.uSkinAmount;
+                    shader.fragmentShader = shader.fragmentShader
+                        .replace('void main() {', 'uniform vec3 uSkinColor;\nuniform float uSkinAmount;\nvoid main() {')
+                        .replace(
+                            '#include <map_fragment>',
+                            '#include <map_fragment>\n\tfloat skinL = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, min(vec3(1.0), skinL * uSkinColor * 1.9), uSkinAmount);',
+                        );
+                };
+                m.customProgramCacheKey = () => 'ttt-skin';
+                m.needsUpdate = true;
+            }
+        }
+        this.skinUniforms.uSkinColor.value.setHex(color);
+        this.skinUniforms.uSkinAmount.value = amount;
     }
 
     /** Scale the model relative to its loaded size (transformations). */

@@ -17,6 +17,7 @@ import {
 } from 'three';
 import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { T, DEG, type MonsterKind } from '../tuning.ts';
+import type { SkinDef } from '../skins.ts';
 import { C } from '../fxTypes.ts';
 import type { Player } from '../player.ts';
 import type { Hunter, HunterKind } from '../hunter.ts';
@@ -177,6 +178,9 @@ export class HeroView {
     private swingSerial = 0;
     /** 0..1, eases in while transformed: black wolf, red Stitched. */
     private transBlend = 0;
+    /** Equipped skin's idle aura (black/0 for the classic look). */
+    private skinGlow = 0x000000;
+    private skinGlowAmount = 0;
 
     constructor(
         private readonly kind: MonsterKind,
@@ -305,10 +309,17 @@ export class HeroView {
         // moonlit sheen so the black wolf still reads against the dark ground
         else if (this.transBlend > 0.05 && this.kind === 'werewolf') c.setGlow(0x312e81, 0.12 * this.transBlend);
         else if (p.specialReady && p.alive) c.setGlow(READY_GLOW[this.kind], 0.25 + 0.2 * pulse);
-        else c.setGlow(0x000000, 0);
+        else c.setGlow(this.skinGlow, this.skinGlowAmount * (0.85 + 0.15 * pulse));
         c.setOpacity(p.hurtFlicker > 0 && Math.floor(p.hurtFlicker * 20) % 2 === 0 ? 0.35 : p.state === 'dodge' ? 0.7 : 1);
 
         this.parryMat.opacity = p.state === 'guard' ? (p.parryOpen ? 0.95 : 0.25) : 0;
+    }
+
+    /** Cosmetic skin (undefined = classic look). */
+    applySkin(skin: SkinDef | undefined): void {
+        this.char.setSkin(skin?.tint ?? 0xffffff, skin?.amount ?? 0);
+        this.skinGlow = skin?.glow ?? 0x000000;
+        this.skinGlowAmount = skin?.glowAmount ?? 0;
     }
 
     /** Transformation tint and size at blend 0..1. */

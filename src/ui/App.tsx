@@ -11,6 +11,7 @@ import LoadingScreen from './LoadingScreen.tsx';
 import MainMenu from './MainMenu.tsx';
 import Hud from './Hud.tsx';
 import Controls from './Controls.tsx';
+import SkinShop from './SkinShop.tsx';
 import GameCanvas from '../game/GameCanvas.tsx';
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <div id="app-frame" className="bg-surface text-white">
             {phase === 'loading' && <LoadingScreen />}
             {phase === 'menu' && <MainMenu />}
+            {phase === 'skins' && <SkinShop />}
             {phase === 'playing' && (
                 <div className="absolute inset-0">
                     {/* key: a new runId remounts the canvas, which restarts the run */}

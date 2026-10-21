@@ -1,0 +1,189 @@
+{
+  "items": [
+    {
+      "itemId": "skins_all",
+      "name": "All monster skins",
+      "description": "All six skins for the Werewolf, the Vampire and the Stitched. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "direct_purchase",
+        "value": "tier_099"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skins_all",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": false,
+      "refundWindowHours": 0,
+      "tags": [
+        "skin",
+        "bundle"
+      ],
+      "sortOrder": 1
+    },
+    {
+      "itemId": "skin_wolf_silver",
+      "name": "Silverback skin",
+      "description": "Werewolf: silver fur with a cold moonlit sheen. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "50"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_wolf_silver",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 2
+    },
+    {
+      "itemId": "skin_wolf_hellhound",
+      "name": "Hellhound skin",
+      "description": "Werewolf: charred black fur with an ember glow. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "100"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_wolf_hellhound",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 3
+    },
+    {
+      "itemId": "skin_vamp_nosferatu",
+      "name": "Nosferatu skin",
+      "description": "Vampire: grave-pale with an icy glow. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "50"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_vamp_nosferatu",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 4
+    },
+    {
+      "itemId": "skin_vamp_bloodmoon",
+      "name": "Blood Moon skin",
+      "description": "Vampire: drenched in crimson under a blood moon. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "100"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_vamp_bloodmoon",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 5
+    },
+    {
+      "itemId": "skin_stitch_pumpkin",
+      "name": "Pumpkin King skin",
+      "description": "Stitched: harvest orange with a candle-lit glow. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "50"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_stitch_pumpkin",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 6
+    },
+    {
+      "itemId": "skin_stitch_toxic",
+      "name": "Toxic skin",
+      "description": "Stitched: radioactive green, glowing from the inside. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "100"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_stitch_toxic",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 7
+    }
+  ],
+  "sales": [],
+  "collections": []
+}

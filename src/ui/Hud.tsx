@@ -184,6 +184,8 @@ export default function Hud() {
     const bossHp = useStore((s) => s.bossHp);
     const challenge = useStore((s) => s.challenge);
     const challengeBeaten = useStore((s) => s.challengeBeaten);
+    const soulsEarned = useStore((s) => s.soulsEarned);
+    const souls = useStore((s) => s.souls);
     const [shareState, setShareState] = useState<'idle' | 'busy' | 'shared' | 'copied' | 'failed'>('idle');
     const [voteState, setVoteState] = useState<'idle' | 'opened' | 'copied' | 'failed'>('idle');
 
@@ -294,6 +296,11 @@ export default function Hud() {
                     {challenge && (
                         <p className={`text-center text-base font-black ${challengeBeaten ? 'text-emerald-300' : 'text-rose-300'}`}>
                             {challengeBeaten ? `You beat ${challenge.from}'s wave ${challenge.wave}!` : `${challenge.from} still leads: wave ${challenge.wave}`}
+                        </p>
+                    )}
+                    {soulsEarned > 0 && (
+                        <p className="text-sm font-black text-violet-200 tabular-nums">
+                            {'\u{1F47B}'} +{soulsEarned} Souls ({souls} total): spend them on skins in the menu
                         </p>
                     )}
                     <p className="text-sm font-bold text-white/60 tabular-nums">

@@ -20,8 +20,8 @@ export interface TeamMember {
 
 /** The UI-facing app state. */
 export interface AppState {
-    /** 'loading' → 'menu' → 'playing' */
-    phase: 'loading' | 'menu' | 'playing';
+    /** 'loading' → 'menu' → 'playing' (or 'skins', the shop, from the menu) */
+    phase: 'loading' | 'menu' | 'playing' | 'skins';
     /** 0..1 progress of the critical-asset warm during 'loading' */
     loadProgress: number;
     /** Set by the host's onPause/onResume lifecycle hooks */
@@ -94,6 +94,16 @@ export interface AppState {
     challenge: { wave: number; kills: number; from: string } | null;
     /** This run got past the challenge wave. */
     challengeBeaten: boolean;
+    /** Souls banked on this device (skin currency earned in runs). */
+    souls: number;
+    /** Souls the last run earned (end screen). */
+    soulsEarned: number;
+    /** Skin ids this player owns (Souls unlocks + RUN shop purchases). */
+    ownedSkins: string[];
+    /** Equipped skin id per monster (missing = classic look). */
+    equippedSkins: Partial<Record<MonsterKind, string>>;
+    /** RUN shop prices by item id ("50 Bits", "$0.99"); empty until the catalog loads. */
+    shopPrices: Record<string, string>;
 }
 
 function startingInputMode(): 'touch' | 'keyboard' {
@@ -148,6 +158,11 @@ let state: AppState = {
     inputMode: startingInputMode(),
     challenge: null,
     challengeBeaten: false,
+    souls: 0,
+    soulsEarned: 0,
+    ownedSkins: [],
+    equippedSkins: {},
+    shopPrices: {},
 };
 
 export const store = {
@@ -174,3 +189,6 @@ export function useStore<T = AppState>(
 ): T {
     return useSyncExternalStore(store.subscribe, () => selector(state));
 }
+
+// Dev-only handle for tests and the console (e.g. granting Souls).
+if (import.meta.env.DEV) (window as unknown as { __store?: typeof store }).__store = store;

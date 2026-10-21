@@ -16,6 +16,7 @@ import { Arena3D } from './arena3d.ts';
 import { HeroView, HunterView } from './actors.ts';
 import { BoltsView } from './bolts.ts';
 import { modelHeight } from './characterView.ts';
+import { skinById } from '../skins.ts';
 const CAM = {
     fov: 42,
     /** Camera offset from its target, meters. */
@@ -72,6 +73,8 @@ export class GameView {
         for (const kind of this.world.player.team.map((m) => m.kind)) {
             const height = HERO_HEIGHTS[kind as keyof typeof HERO_HEIGHTS] ?? HERO_HEIGHTS.werewolf;
             const hero = new HeroView(kind, getModel(kind as ModelKey), scaleFor(kind as ModelKey, height));
+            const skin = skinById(store.get().equippedSkins[kind]);
+            if (skin && store.get().ownedSkins.includes(skin.id)) hero.applySkin(skin);
             this.heroes.push(hero);
             this.scene.add(hero.char.root);
         }

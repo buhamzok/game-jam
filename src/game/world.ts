@@ -15,6 +15,7 @@ import { Player } from './player.ts';
 import { Hunter, wrapAngle, type HunterKind, type WaveMods } from './hunter.ts';
 import { store } from '../state/store.ts';
 import type { SfxName } from './audio.ts';
+import { SOULS } from './skins.ts';
 
 /** Each monster's pain voice, transformation voice and swing. */
 const HURT_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfHurt', vampire: 'vampHurt', stitched: 'stitchHurt' };
@@ -58,6 +59,8 @@ export class World {
 
     private wave = 0;
     private kills = 0;
+    /** Gravelords felled this run (Souls). */
+    private bossKills = 0;
     private waveTimer: number = T.waves.delay;
     private bannerTimer = 0;
     /** Seconds left of the Crimson Rain opportunity window after a big move. */
@@ -310,6 +313,7 @@ export class World {
     /** The Gravelord falls: slow motion, every hunter left crumbles, the team heals and refills. */
     onBossKilled(h: Hunter): void {
         const p = this.player;
+        this.bossKills++;
         this.fx.freeze(0.45);
         this.fx.flash(0xffffff, 0.6);
         this.fx.shake(1);
@@ -950,7 +954,10 @@ export class World {
         this.fx.sound('gameOver');
         this.fx.sound('vo_gameover', { delay: 0.9 });
         this.witching = 0;
-        store.patch({ gameOver: true, finalWave: this.wave, finalKills: this.kills, banner: '', bannerSub: '' });
+        // Souls for skins: KOs, waves cleared (the last one was not), bosses
+        const souls = this.kills * SOULS.perKill + Math.max(0, this.wave - 1) * SOULS.perWave + this.bossKills * SOULS.perBoss;
+        store.patch({ gameOver: true, finalWave: this.wave, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls });
+        void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         // the RUN app's own Share button now sends this run as a challenge
         void import('../sdk/challenge.ts').then((c) => c.setChallengeIntent(this.wave, this.kills)).catch(() => undefined);
         // Daily Hunt: remember the run and (when it beat the old best) score it
