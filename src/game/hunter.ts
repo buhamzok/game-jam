@@ -438,7 +438,8 @@ export class Hunter {
 
     /** Melee: walk in, then circle the player a little instead of standing still. */
     private closeIn(dt: number, dx: number, dy: number, dist: number): void {
-        if (dist > T.hunter.stopRange) {
+        // stop at arm's length, or at body contact for big bodies (no walking into the player)
+        if (dist > Math.max(T.hunter.stopRange, this.w.contactDist(this) + 6)) {
             const s = this.speed * dt;
             this.x += (dx / dist) * s;
             this.y += (dy / dist) * s;

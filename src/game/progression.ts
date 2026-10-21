@@ -10,9 +10,15 @@
 export const LEVEL = {
     max: 30,
     pointsPerLevel: 2,
-    /** XP from level L to L+1: base + perLevel * L (55 for the first, 755 for the last; 11,745 in all). */
-    base: 30,
-    perLevel: 25,
+    /**
+     * XP from level L to L+1 climbs faster the higher you go: base + scale * L^power,
+     * rounded to 5. Level 2 takes 60, level 10 about 650, level 20 about 2,000,
+     * level 30 about 3,700 (about 43,000 in all): early levels come in the first
+     * runs, the last ones take real play.
+     */
+    base: 50,
+    scale: 12,
+    power: 1.7,
 };
 
 export const XP = {
@@ -78,7 +84,7 @@ export function boostsFor(p: StatPoints): Boosts {
 }
 
 export function xpToNext(level: number): number {
-    return LEVEL.base + LEVEL.perLevel * level;
+    return Math.round((LEVEL.base + LEVEL.scale * level ** LEVEL.power) / 5) * 5;
 }
 
 /** Level and progress from total XP. At max level `need` is 0. */

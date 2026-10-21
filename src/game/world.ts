@@ -931,38 +931,76 @@ export class World {
         return this.fx.hitstop > 0 || this.over ? 0 : 1;
     }
 
+    /** Centre distance at which hunter `h` touches the active monster (melee stops walking in here). */
+    contactDist(h: Hunter): number {
+        return this.bodyR(h) + T.bodies.monster[this.player.kind()];
+    }
+
+    /** Body size for keeping characters apart (wider than the hit radius: it matches the model). */
+    private bodyR(h: Hunter): number {
+        const B = T.bodies;
+        if (h.def.boss) return B.boss;
+        if (h.rival) return B.monster[h.rival.monster];
+        return B.hunter;
+    }
+
+    private bodyMass(h: Hunter): number {
+        const m = T.bodies.mass;
+        return h.def.boss ? m.boss : h.rival ? m.rival : m.hunter;
+    }
+
+    /**
+     * Keep bodies from standing inside each other: push overlapping pairs
+     * apart by their weights, a few passes so a crowd settles, staying inside
+     * the arena between passes. Dashing moves (dodge, counter, special) pass
+     * through and are pushed out when they end. A hunter in the air (the
+     * Gravelord's leap) lands first.
+     */
     private separate(): void {
         const p = this.player;
-        const list = this.hunters.filter((h) => h.alive);
-        for (let i = 0; i < list.length; i++) {
-            const a = list[i];
-            for (let j = i + 1; j < list.length; j++) {
-                const b = list[j];
-                const dx = b.x - a.x;
-                const dy = b.y - a.y;
-                const d = Math.hypot(dx, dy) || 0.01;
-                const min = a.r + b.r + 4;
-                if (d < min) {
-                    const push = (min - d) / 2;
-                    a.x -= (dx / d) * push;
-                    a.y -= (dy / d) * push;
-                    b.x += (dx / d) * push;
-                    b.y += (dy / d) * push;
-                }
-            }
-            if (!p.phasing && p.alive) {
-                const dx = a.x - p.x;
-                const dy = a.y - p.y;
-                const d = Math.hypot(dx, dy) || 0.01;
-                const min = a.r + p.r;
-                if (d < min) {
+        const B = T.bodies;
+        const list = this.hunters.filter((h) => h.alive && h.air <= 0);
+        const pr = B.monster[p.kind()];
+        const solid = !p.phasing && p.alive;
+        for (let pass = 0; pass < B.passes; pass++) {
+            let moved = false;
+            for (let i = 0; i < list.length; i++) {
+                const a = list[i];
+                const ar = this.bodyR(a);
+                const am = this.bodyMass(a);
+                for (let j = i + 1; j < list.length; j++) {
+                    const b = list[j];
+                    const dx = b.x - a.x;
+                    const dy = b.y - a.y;
+                    const d = Math.hypot(dx, dy) || 0.01;
+                    const min = ar + this.bodyR(b);
+                    if (d >= min) continue;
+                    const bm = this.bodyMass(b);
                     const push = min - d;
-                    a.x += (dx / d) * push * 0.75;
-                    a.y += (dy / d) * push * 0.75;
-                    p.x -= (dx / d) * push * 0.25;
-                    p.y -= (dy / d) * push * 0.25;
+                    const ka = bm / (am + bm);
+                    a.x -= (dx / d) * push * ka;
+                    a.y -= (dy / d) * push * ka;
+                    b.x += (dx / d) * push * (1 - ka);
+                    b.y += (dy / d) * push * (1 - ka);
+                    moved = true;
+                }
+                if (solid) {
+                    const dx = a.x - p.x;
+                    const dy = a.y - p.y;
+                    const d = Math.hypot(dx, dy) || 0.01;
+                    const min = ar + pr;
+                    if (d >= min) continue;
+                    const push = min - d;
+                    const ka = B.mass.player / (B.mass.player + am);
+                    a.x += (dx / d) * push * ka;
+                    a.y += (dy / d) * push * ka;
+                    p.x -= (dx / d) * push * (1 - ka);
+                    p.y -= (dy / d) * push * (1 - ka);
+                    moved = true;
                 }
             }
+            if (!moved) break;
+            this.clampToArena();
         }
     }
 

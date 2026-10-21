@@ -359,6 +359,18 @@ export const T = {
 
     /** Reflected bolts (parried) fly back this much faster and hit for this. */
     reflect: { speedMult: 1.3, dmg: 30, poise: 40 },
+    /**
+     * Body sizes for keeping characters apart (sim units), sized to the 3D
+     * models' shoulders so they never stand inside each other. Hit ranges still
+     * use each body's smaller `radius`. Heavier bodies get pushed less.
+     */
+    bodies: {
+        passes: 3,
+        monster: { werewolf: 46, vampire: 40, stitched: 58 } as Record<'werewolf' | 'vampire' | 'stitched', number>,
+        hunter: 40,
+        boss: 104,
+        mass: { player: 3, hunter: 1, rival: 1.5, boss: 8 },
+    },
     /** Blood on hits: hits under minDamage (bat nibbles, auras) stay clean; amount = dmg / damagePerUnit, capped. */
     gore: { minDamage: 5, damagePerUnit: 14, maxAmount: 2.5 },
 
