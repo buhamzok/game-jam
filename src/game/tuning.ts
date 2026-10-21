@@ -424,7 +424,7 @@ export const T = {
      * adds `hunters` per realm (up to extraMax) and sharpens their timing.
      * Tier counts realms entered (it keeps rising on the second lap), up to `cap`.
      */
-    realmTier: { hp: 0.3, dmg: 0.15, speed: 0.03, cooldown: 0.05, hunters: 1, extraMax: 3, cap: 10 },
+    realmTier: { hp: 0.3, dmg: 0.15, speed: 0.03, cooldown: 0.05, hunters: 1, extraMax: 2, cap: 10 },
     /** Player sits at this fraction of screen height; the bottom is under the thumbs. */
     camera: { anchorY: 0.4, lerp: 8 },
 
