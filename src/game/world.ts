@@ -16,6 +16,7 @@ import { Hunter, wrapAngle, type HunterKind, type WaveMods } from './hunter.ts';
 import { store } from '../state/store.ts';
 import type { SfxName } from './audio.ts';
 import { SOULS } from './skins.ts';
+import { REALMS, PORTAL, type RealmDef } from './realms.ts';
 
 /** Each monster's pain voice, transformation voice and swing. */
 const HURT_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfHurt', vampire: 'vampHurt', stitched: 'stitchHurt' };
@@ -61,6 +62,13 @@ export class World {
     private kills = 0;
     /** Gravelords felled this run (Souls). */
     private bossKills = 0;
+    /** Realms entered so far (0 = the first); the current map is REALMS[realmIndex % length]. */
+    realmIndex = 0;
+    realm: RealmDef = REALMS[0];
+    /** Bumped on every realm change; the view rebuilds the arena when it moves. */
+    realmVersion = 0;
+    /** The portal after a boss wave: open until the player steps in. */
+    portal: { x: number; y: number; t: number } | null = null;
     private waveTimer: number = T.waves.delay;
     private bannerTimer = 0;
     /** Seconds left of the Crimson Rain opportunity window after a big move. */
@@ -100,7 +108,7 @@ export class World {
 
     constructor(readonly fx: Fx) {
         this.player = new Player(this);
-        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false });
+        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false });
         this.syncHud();
     }
 
@@ -382,8 +390,8 @@ export class World {
 
     private updateBolts(enemyDt: number, dt: number): void {
         const p = this.player;
-        const hw = T.arena.w / 2;
-        const hh = T.arena.h / 2;
+        const hw = this.realm.arena.w / 2;
+        const hh = this.realm.arena.h / 2;
         for (const b of this.bolts) {
             const bdt = b.owner === 'enemy' ? enemyDt : dt;
             if (bdt <= 0) continue;
@@ -396,6 +404,8 @@ export class World {
                 this.fx.trail(b.x, b.y, b.owner === 'enemy' ? C.bolt : C.counter, 16, 0.22);
             }
             if (Math.abs(b.x) > hw || Math.abs(b.y) > hh) b.life = 0;
+            // trees, pumpkins and graves stop bolts: cover
+            for (const o of this.realm.obstacles) if (Math.hypot(b.x - o.x, b.y - o.y) < o.r + BOLT_R) b.life = 0;
             if (b.life <= 0) continue;
 
             if (b.owner === 'player') {
@@ -825,13 +835,30 @@ export class World {
     /** Walkable box for a body of radius r: inside the fence, never in it. */
     bounds(r: number): { x0: number; x1: number; y0: number; y1: number } {
         const a = T.arena;
-        const hw = a.w / 2;
-        const hh = a.h / 2;
+        const hw = this.realm.arena.w / 2;
+        const hh = this.realm.arena.h / 2;
         return { x0: -hw + a.wall + r, x1: hw - a.wall - r, y0: -hh + a.wall + r, y1: hh - a.nearWall - r };
     }
 
+    /** True when a body of radius r at (x, y) overlaps no obstacle (spawn checks). */
+    private clearOfObstacles(x: number, y: number, r: number): boolean {
+        return this.realm.obstacles.every((o) => Math.hypot(x - o.x, y - o.y) > o.r + r + 20);
+    }
+
     private clampToArena(): void {
+        const obstacles = this.realm.obstacles;
         const clamp = (o: { x: number; y: number; r: number }) => {
+            // slide around solid props, then stay inside the border
+            for (const ob of obstacles) {
+                const dx = o.x - ob.x;
+                const dy = o.y - ob.y;
+                const d = Math.hypot(dx, dy) || 0.01;
+                const min = ob.r + o.r;
+                if (d < min) {
+                    o.x = ob.x + (dx / d) * min;
+                    o.y = ob.y + (dy / d) * min;
+                }
+            }
             const b = this.bounds(o.r);
             o.x = Math.max(b.x0, Math.min(b.x1, o.x));
             o.y = Math.max(b.y0, Math.min(b.y1, o.y));
@@ -888,6 +915,12 @@ export class World {
                 this.fx.ring(p.x, p.y, p.r, 220, 0xfde68a, 8, 0.45);
             }
             this.waveTimer = this.waveHurt ? T.waves.delay : T.waves.delay + 1;
+            // a boss wave ends with a portal to the next realm; waves wait for the player
+            if (this.wave > 0 && isBossWave(this.wave)) this.openPortal();
+        }
+        if (this.portal) {
+            this.updatePortal(dt);
+            return;
         }
         this.waveTimer -= dt;
         if (this.waveTimer > 0) return;
@@ -918,12 +951,74 @@ export class World {
         this.bannerTimer = T.waves.bannerTime + 0.6;
     }
 
+    // ---- realms ------------------------------------------------------------
+
+    /** The next realm in the cycle. */
+    nextRealm(): RealmDef {
+        return REALMS[(this.realmIndex + 1) % REALMS.length];
+    }
+
+    /** Open the portal in the far half of the arena (away from where the boss fell is fine). */
+    private openPortal(): void {
+        const b = this.bounds(PORTAL.radius);
+        let x = 0;
+        let y = Math.max(b.y0 + 60, -this.realm.arena.h * 0.18);
+        // keep it off any obstacle
+        for (let i = 0; i < 12 && !this.clearOfObstacles(x, y, PORTAL.radius); i++) x += i % 2 === 0 ? 160 * (i + 1) : -160 * (i + 1);
+        x = Math.max(b.x0, Math.min(b.x1, x));
+        this.portal = { x, y, t: 0 };
+        const next = this.nextRealm();
+        this.fx.ring(x, y, 20, 260, C.heavy, 14, 0.8);
+        this.fx.burst(x, y, C.counter, 30, 520, 8, 0.7);
+        this.fx.sound('witching', { delay: 0.6 });
+        this.fx.sound('bell', { delay: 1.4 });
+        store.patch({ banner: 'A PORTAL OPENS', bannerSub: `Step in to reach ${next.name.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())}`, portalOpen: true });
+        this.bannerTimer = T.waves.bannerTime + 2;
+    }
+
+    private updatePortal(dt: number): void {
+        const pt = this.portal!;
+        pt.t += dt;
+        const p = this.player;
+        if (!p.alive || pt.t < 0.8) return;
+        if (Math.hypot(p.x - pt.x, p.y - pt.y) <= PORTAL.radius) this.enterRealm();
+    }
+
+    /** Step through: new map, player at the near end, waves carry on after a beat. */
+    private enterRealm(): void {
+        this.realmIndex++;
+        this.realm = REALMS[this.realmIndex % REALMS.length];
+        this.realmVersion++;
+        this.portal = null;
+        this.bolts = [];
+        this.pending = [];
+        const p = this.player;
+        p.x = 0;
+        p.y = this.realm.arena.h * 0.22;
+        p.facing = -Math.PI / 2;
+        this.waveTimer = T.waves.delay + 1.6;
+        this.fx.flash(0x000000, 1);
+        this.fx.sound('witching');
+        this.fx.sound('rumble', { delay: 0.2, volume: 0.6 });
+        const lap = Math.floor(this.realmIndex / REALMS.length);
+        store.patch({
+            banner: this.realm.name + (lap > 0 ? ` ${'I'.repeat(Math.min(3, lap + 1))}` : ''),
+            bannerSub: this.realm.sub,
+            realmName: this.realm.name,
+            portalOpen: false,
+        });
+        this.bannerTimer = PORTAL.banner;
+        void import('../sdk/dailyHunt.ts').then((h) => h.telemetry('realm_enter', { realm: this.realm.id, wave: this.wave })).catch(() => undefined);
+    }
+
     /** The boss slams in from the edge: rise, then a shockwave ring, plus a roar. */
     private spawnBoss(mods: WaveMods): void {
-        const hw = T.arena.w / 2 - 120;
-        const hh = T.arena.h / 2 - 120;
+        const bb = this.bounds(T.hunterKinds.boss.radius ?? 92);
+        const hw = bb.x1;
+        const hh = bb.y1;
         const p = this.player;
-        const ang = Math.random() * Math.PI * 2;
+        let ang = Math.random() * Math.PI * 2;
+        for (let i = 0; i < 12 && !this.clearOfObstacles(Math.cos(ang) * hw, Math.sin(ang) * hh, 92); i++) ang += 0.5;
         const x = Math.cos(ang) * hw;
         const y = Math.sin(ang) * hh;
         this.hunters.push(new Hunter(this, x, y, 'boss', mods));
@@ -935,15 +1030,14 @@ export class World {
     }
 
     private spawnHunter(kind: HunterKind, mods: WaveMods): void {
-        const hw = T.arena.w / 2 - 80;
-        const hh = T.arena.h / 2 - 80;
+        const b = this.bounds(T.hunter.radius + 20);
         const p = this.player;
         let x = 0;
         let y = 0;
-        for (let tries = 0; tries < 20; tries++) {
-            x = (Math.random() * 2 - 1) * hw;
-            y = (Math.random() * 2 - 1) * hh;
-            if (Math.hypot(x - p.x, y - p.y) >= T.waves.minSpawnDistance) break;
+        for (let tries = 0; tries < 30; tries++) {
+            x = b.x0 + Math.random() * (b.x1 - b.x0);
+            y = b.y0 + Math.random() * (b.y1 - b.y0);
+            if (Math.hypot(x - p.x, y - p.y) >= T.waves.minSpawnDistance && this.clearOfObstacles(x, y, T.hunter.radius)) break;
         }
         this.hunters.push(new Hunter(this, x, y, kind, mods));
         this.fx.ring(x, y, 10, 70, kind === 'rogue' ? C.bolt : kind === 'mage' ? C.heavy : C.jab, 6, 0.5);
@@ -963,7 +1057,7 @@ export class World {
         // Daily Hunt: remember the run and (when it beat the old best) score it
         // on the RUN daily board. Never blocks or throws into the sim.
         void import('../sdk/dailyHunt.ts')
-            .then((h) => Promise.all([h.submitRun(this.wave, this.clock, this.kills), h.telemetry('run_end', { wave: this.wave, kills: this.kills, seconds: Math.round(this.clock) }), h.fetchDailyBoard()]))
+            .then((h) => Promise.all([h.submitRun(this.wave, this.clock, this.kills), h.telemetry('run_end', { wave: this.wave, kills: this.kills, seconds: Math.round(this.clock), realm: this.realm.id }), h.fetchDailyBoard()]))
             .catch(() => undefined);
     }
 

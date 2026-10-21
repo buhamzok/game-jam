@@ -17,6 +17,7 @@ import { HeroView, HunterView } from './actors.ts';
 import { BoltsView } from './bolts.ts';
 import { modelHeight } from './characterView.ts';
 import { skinById } from '../skins.ts';
+import { PortalView } from './portal3d.ts';
 const CAM = {
     fov: 42,
     /** Camera offset from its target, meters. */
@@ -40,7 +41,10 @@ export class GameView {
     private readonly scene = new Scene();
     private readonly camera = new PerspectiveCamera(CAM.fov, 1, 0.1, 80);
     private readonly fx = new Fx3D();
-    private readonly arena: Arena3D;
+    private arena: Arena3D;
+    private readonly kaykitScale: number;
+    private shownRealm = 0;
+    private readonly portal = new PortalView();
     /** One mirror view per team member; only the active monster is visible. */
     private readonly heroes: HeroView[] = [];
     private readonly hunters = new Map<number, HunterView>();
@@ -67,9 +71,11 @@ export class GameView {
         const scaleFor = (key: ModelKey, height: number) => height / modelHeight(getModel(key));
         this.scales = { knight: kaykitScale, barbarian: scaleFor('barbarian', HUNTER_HEIGHT), rogue: kaykitScale, mage: kaykitScale, boss: scaleFor('bossgolem', 3.2) };
 
-        this.arena = new Arena3D(this.scene, kaykitScale);
-        this.scene.add(this.fx.group, this.bolts.group);
+        this.kaykitScale = kaykitScale;
         this.world = new World(this.fx);
+        this.arena = new Arena3D(this.scene, kaykitScale, this.world.realm);
+        this.shownRealm = this.world.realmVersion;
+        this.scene.add(this.fx.group, this.bolts.group, this.portal.group);
         for (const kind of this.world.player.team.map((m) => m.kind)) {
             const height = HERO_HEIGHTS[kind as keyof typeof HERO_HEIGHTS] ?? HERO_HEIGHTS.werewolf;
             const hero = new HeroView(kind, getModel(kind as ModelKey), scaleFor(kind as ModelKey, height));
@@ -128,6 +134,8 @@ export class GameView {
     step(dt: number): void {
         const realDt = Math.min(dt, MAX_DT);
         this.world.update(realDt);
+        if (this.world.realmVersion !== this.shownRealm) this.changeRealm();
+        this.portal.update(this.world.portal, realDt);
         this.fx.listenerX = this.world.player.x;
         const animDt = realDt * this.world.simScale();
         const enemyAnimDt = animDt * (this.world.witching > 0 ? T.witching.enemyTimeScale : 1);
@@ -180,10 +188,19 @@ export class GameView {
         }
     }
 
+    /** The player stepped through a portal: rebuild the arena and cut the camera to the new spot. */
+    private changeRealm(): void {
+        this.shownRealm = this.world.realmVersion;
+        this.arena.dispose();
+        this.arena = new Arena3D(this.scene, this.kaykitScale, this.world.realm);
+        const p = this.world.player;
+        this.camTarget.set(p.x * U, 0, p.y * U);
+    }
+
     private updateCamera(dt: number): void {
         const p = this.world.player;
-        const hw = (T.arena.w / 2) * U;
-        const hh = (T.arena.h / 2) * U;
+        const hw = (this.world.realm.arena.w / 2) * U;
+        const hh = (this.world.realm.arena.h / 2) * U;
         const tx = Math.max(-hw + 2, Math.min(hw - 2, p.x * U));
         const tz = Math.max(-hh + 1, Math.min(hh - 0.5, p.y * U));
         const k = Math.min(1, CAM.lerp * dt);
@@ -213,6 +230,7 @@ export class GameView {
         for (const v of this.hunters.values()) v.dispose();
         this.hunters.clear();
         this.bolts.dispose();
+        this.portal.dispose();
         for (const h of this.heroes) h.dispose();
         this.fx.dispose();
         this.arena.dispose();

@@ -104,6 +104,9 @@ export interface AppState {
     equippedSkins: Partial<Record<MonsterKind, string>>;
     /** RUN shop prices by item id ("50 Bits", "$0.99"); empty until the catalog loads. */
     shopPrices: Record<string, string>;
+    /** Current realm (map) name, and whether its exit portal is open. */
+    realmName: string;
+    portalOpen: boolean;
 }
 
 function startingInputMode(): 'touch' | 'keyboard' {
@@ -163,6 +166,8 @@ let state: AppState = {
     ownedSkins: [],
     equippedSkins: {},
     shopPrices: {},
+    realmName: '',
+    portalOpen: false,
 };
 
 export const store = {

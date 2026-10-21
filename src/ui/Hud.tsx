@@ -185,6 +185,8 @@ export default function Hud() {
     const challenge = useStore((s) => s.challenge);
     const challengeBeaten = useStore((s) => s.challengeBeaten);
     const soulsEarned = useStore((s) => s.soulsEarned);
+    const realmName = useStore((s) => s.realmName);
+    const portalOpen = useStore((s) => s.portalOpen);
     const souls = useStore((s) => s.souls);
     const [shareState, setShareState] = useState<'idle' | 'busy' | 'shared' | 'copied' | 'failed'>('idle');
     const [voteState, setVoteState] = useState<'idle' | 'opened' | 'copied' | 'failed'>('idle');
@@ -218,9 +220,13 @@ export default function Hud() {
                         </div>
                     )}
                     <div className="flex justify-between text-xs font-bold text-white/70 tabular-nums">
-                        <span>Wave {wave}</span>
+                        <span>
+                            Wave {wave}
+                            {realmName && <span className="ml-1.5 text-[10px] font-black tracking-wider text-violet-300/80">{realmName.replace(/^THE /, '')}</span>}
+                        </span>
                         <span>KOs {kills}</span>
                     </div>
+                    {portalOpen && <div className="animate-pulse text-center text-[10px] font-black tracking-[0.2em] text-violet-300">{'\u2728'} PORTAL OPEN: STEP IN</div>}
                     {challenge && (
                         <div className={`text-center text-[10px] font-black tracking-[0.15em] tabular-nums ${challengeBeaten ? 'text-emerald-300' : 'text-amber-300'}`}>
                             {challengeBeaten ? `\u2713 BEAT ${challenge.from.toUpperCase()}'S WAVE ${challenge.wave}` : `\u2694 BEAT ${challenge.from.toUpperCase()}: PASS WAVE ${challenge.wave}`}
