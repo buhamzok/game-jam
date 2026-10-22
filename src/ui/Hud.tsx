@@ -283,15 +283,20 @@ function restart() {
     store.patch({ runId: s.runId + 1, gameOver: false });
 }
 
-function persistToggle(kind: 'shake' | 'flash', value: boolean) {
+type SettingKey = 'shake' | 'flash' | 'gore' | 'damageNumbers' | 'lowGraphics';
+
+function persistToggle(kind: SettingKey, value: boolean) {
     if (sdkReady()) RundotGameAPI.deviceCache.setItem(`ttt.${kind}`, value ? '1' : '0').catch(() => undefined);
 }
 
-function toggleSetting(kind: 'shake' | 'flash') {
-    const s = store.get();
-    const next = !(kind === 'shake' ? s.shake : s.flash);
+function toggleSetting(kind: SettingKey) {
+    const next = !store.get()[kind];
     persistToggle(kind, next);
-    store.patch(kind === 'shake' ? { shake: next } : { flash: next });
+    if (kind === 'shake') store.patch({ shake: next });
+    else if (kind === 'flash') store.patch({ flash: next });
+    else if (kind === 'gore') store.patch({ gore: next });
+    else if (kind === 'damageNumbers') store.patch({ damageNumbers: next });
+    else store.patch({ lowGraphics: next });
     audio.play('click');
 }
 
@@ -321,6 +326,9 @@ export default function Hud() {
     const muted = useStore((s) => s.muted);
     const shake = useStore((s) => s.shake);
     const flash = useStore((s) => s.flash);
+    const gore = useStore((s) => s.gore);
+    const damageNumbers = useStore((s) => s.damageNumbers);
+    const lowGraphics = useStore((s) => s.lowGraphics);
     const dailyRank = useStore((s) => s.dailyRank);
     const dailyPlayers = useStore((s) => s.dailyPlayers);
     const bestWave = useStore((s) => s.bestWave);
@@ -659,6 +667,27 @@ export default function Hud() {
                                 onClick={() => toggleSetting('flash')}
                             >
                                 Flash: {flash ? 'ON' : 'OFF'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white transition-transform active:scale-95 ${gore ? '' : 'opacity-50'}`}
+                                onClick={() => toggleSetting('gore')}
+                            >
+                                Gore: {gore ? 'ON' : 'OFF'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white transition-transform active:scale-95 ${damageNumbers ? '' : 'opacity-50'}`}
+                                onClick={() => toggleSetting('damageNumbers')}
+                            >
+                                Damage numbers: {damageNumbers ? 'ON' : 'OFF'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white transition-transform active:scale-95 ${lowGraphics ? '' : 'opacity-50'}`}
+                                onClick={() => toggleSetting('lowGraphics')}
+                            >
+                                Low graphics: {lowGraphics ? 'ON' : 'OFF'}
                             </button>
                         </div>
                         <button

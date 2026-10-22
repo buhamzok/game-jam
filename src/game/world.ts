@@ -146,6 +146,11 @@ export class World {
     private stats = { maxCombo: 0, hits: 0, perfects: 0, counters: 0, damageTaken: 0 };
 
     /** A player hit landed on a hunter (not a bleed tick, not a block): the combo grows. */
+    /** Floating damage number, unless the HUD setting turns them off. */
+    damageText(x: number, y: number, str: string, color: number, size: number, life: number): void {
+        if (store.get().damageNumbers) this.fx.text(x, y, str, color, size, life);
+    }
+
     onHitLanded(): void {
         this.combo++;
         this.comboT = T.combo.timeout;
@@ -458,7 +463,7 @@ export class World {
         this.waveHurt = true;
         this.fx.sound('hit', { volume: 0.85 });
         this.fx.sound(hurtVoice);
-        this.fx.text(p.x, p.y - 30, `-${dmg}`, C.blood, 32, 0.7);
+        this.damageText(p.x, p.y - 30, `-${dmg}`, C.blood, 32, 0.7);
         this.fx.burst(p.x, p.y, C.blood, 10, 300, 6, 0.35);
         this.fx.freeze(0.06);
         this.fx.shake(0.4);

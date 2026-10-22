@@ -172,6 +172,12 @@ export function heroIdle(kind: MonsterKind): AnimSpec {
     return (MONSTER_ANIMS[kind] ?? WEREWOLF_ANIMS).idle;
 }
 
+/** A monster's transformation clip, reused as its victory pose on the title lineup. */
+export function heroPose(kind: MonsterKind): AnimSpec {
+    const anims = MONSTER_ANIMS[kind] ?? WEREWOLF_ANIMS;
+    return anims.trans ?? anims.idle;
+}
+
 /** Signature glow per monster when the special is ready. */
 const READY_GLOW: Record<MonsterKind, number> = { werewolf: C.wolf, vampire: C.counter, stitched: C.rod };
 

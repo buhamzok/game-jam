@@ -227,10 +227,23 @@ export class Fx3D implements Fx {
     private readonly splatTex = [splatTexture(1), splatTexture(2), splatTexture(3)];
     private readonly splatGeo = new PlaneGeometry(1, 1);
     private splats: Splat[] = [];
+    private goreOn = true;
+    private lowFx = false;
 
     constructor() {
         this.group.add(this.soft.points, this.glow.points);
         this.splatGeo.rotateX(-Math.PI / 2);
+    }
+
+    /** HUD settings: blood can be turned off (clearing the old splats), low graphics halves particle counts. */
+    setPreferences(gore: boolean, low: boolean): void {
+        if (!gore && this.goreOn) this.clearSplats();
+        this.goreOn = gore;
+        this.lowFx = low;
+    }
+
+    private particles(n: number): number {
+        return this.lowFx ? Math.max(1, Math.round(n / 2)) : n;
     }
 
     setProjection(v: number): void {
@@ -241,7 +254,7 @@ export class Fx3D implements Fx {
     burst(x: number, y: number, color: number, count = 10, speed = 320, size = 6, life = 0.4, glow = true): void {
         this.tmpColor.setHex(color);
         const layer = glow ? this.glow : this.soft;
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < this.particles(count); i++) {
             const a = Math.random() * Math.PI * 2;
             const s = speed * U * (0.35 + Math.random() * 0.65);
             layer.add(x * U, FX_Y, y * U, Math.cos(a) * s, 1 + Math.random() * 2.5, Math.sin(a) * s, 5, size * U * 2.4, this.tmpColor, life, glow);
@@ -250,7 +263,7 @@ export class Fx3D implements Fx {
 
     spray(x: number, y: number, angle: number, spreadRad: number, color: number, count = 8, speed = 420, size = 5, life = 0.3): void {
         this.tmpColor.setHex(color);
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < this.particles(count); i++) {
             const a = angle + (Math.random() - 0.5) * spreadRad;
             const s = speed * U * (0.4 + Math.random() * 0.6);
             this.glow.add(x * U, FX_Y, y * U, Math.cos(a) * s, 0.5 + Math.random() * 2, Math.sin(a) * s, 6, size * U * 2.4, this.tmpColor, life, true);
@@ -263,7 +276,8 @@ export class Fx3D implements Fx {
     }
 
     blood(x: number, y: number, angle: number, amount = 1, kill = false): void {
-        const drops = Math.round(Math.min(14, (kill ? 12 : 3) + amount * 4));
+        if (!this.goreOn) return;
+        const drops = this.particles(Math.round(Math.min(14, (kill ? 12 : 3) + amount * 4)));
         const fresh = this.tmpColor.setHex(C.gore).clone();
         // a few drops turn into splats; the rest are just spray
         let splatsLeft = kill ? 5 : Math.min(3, 1 + Math.round(amount));

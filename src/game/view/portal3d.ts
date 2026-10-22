@@ -20,11 +20,12 @@ function swirlTexture(): CanvasTexture {
     const c = document.createElement('canvas');
     c.width = c.height = 128;
     const g = c.getContext('2d')!;
+    // neutral so the portal color (set by the equipped cosmetic) tints the whole swirl
     const grad = g.createRadialGradient(64, 64, 4, 64, 64, 64);
-    grad.addColorStop(0, 'rgba(255,240,255,1)');
-    grad.addColorStop(0.35, 'rgba(192,132,252,0.9)');
-    grad.addColorStop(0.8, 'rgba(76,29,149,0.6)');
-    grad.addColorStop(1, 'rgba(20,0,40,0)');
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(0.8, 'rgba(190,190,190,0.6)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = grad;
     g.fillRect(0, 0, 128, 128);
     // spiral arms
@@ -51,15 +52,22 @@ export class PortalView {
     private readonly core: Mesh;
     private readonly pool: Mesh;
     private readonly light: PointLight;
+    private readonly ringMat: MeshBasicMaterial;
+    private readonly coreMat: MeshBasicMaterial;
+    private readonly poolMat: MeshBasicMaterial;
     private readonly tex = swirlTexture();
+    private color = 0xc084fc;
     private grow = 0;
 
     constructor() {
         const ringMat = new MeshBasicMaterial({ color: 0xc084fc, transparent: true, opacity: 0.95, blending: AdditiveBlending, depthWrite: false });
+        this.ringMat = ringMat;
         this.ring = new Mesh(new TorusGeometry(0.85, 0.09, 12, 48), ringMat);
-        const coreMat = new MeshBasicMaterial({ map: this.tex, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
+        const coreMat = new MeshBasicMaterial({ map: this.tex, color: 0xc084fc, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
+        this.coreMat = coreMat;
         this.core = new Mesh(new CircleGeometry(0.8, 40), coreMat);
         const poolMat = new MeshBasicMaterial({ map: this.tex, color: 0xa855f7, transparent: true, opacity: 0.55, blending: AdditiveBlending, depthWrite: false });
+        this.poolMat = poolMat;
         this.pool = new Mesh(new CircleGeometry(1.2, 40), poolMat);
         this.pool.rotation.x = -Math.PI / 2;
         this.pool.position.y = 0.03;
@@ -72,6 +80,16 @@ export class PortalView {
         this.light.position.y = 1.2;
         this.group.add(stand, this.pool, this.light);
         this.group.visible = false;
+    }
+
+    /** Tint the ring, swirl, pool and light (the equipped portal color). */
+    setColor(color: number): void {
+        if (color === this.color) return;
+        this.color = color;
+        this.ringMat.color.setHex(color);
+        this.coreMat.color.setHex(color);
+        this.poolMat.color.setHex(color);
+        this.light.color.setHex(color);
     }
 
     /** `at` in sim units, or null when there is no portal. */

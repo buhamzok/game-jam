@@ -91,6 +91,20 @@ export interface AppState {
     shake: boolean;
     /** Damage/hit flashes on (HUD toggle; remembered on this device). */
     flash: boolean;
+    /** Blood spray and ground splats on (HUD toggle; remembered on this device). */
+    gore: boolean;
+    /** Floating damage numbers on (HUD toggle; remembered on this device). */
+    damageNumbers: boolean;
+    /** Low graphics mode: 1x pixel ratio and fewer particles (HUD toggle; remembered on this device). */
+    lowGraphics: boolean;
+    /** Selected portal color id (game/cosmetics.ts). */
+    portalStyle: string;
+    /** Portal colors unlocked on this device. */
+    ownedPortals: string[];
+    /** The victory pose cosmetic is unlocked. */
+    posesOwned: boolean;
+    /** Play the victory pose on the title-screen lineup. */
+    victoryPoses: boolean;
     /** Which controls to show: touch buttons, or keyboard hints (switches on last input used). */
     inputMode: 'touch' | 'keyboard';
     /** Opened from a friend's challenge link: the wave to beat (see sdk/challenge.ts). */
@@ -211,6 +225,13 @@ let state: AppState = {
     dailyPlayers: 0,
     shake: true,
     flash: true,
+    gore: true,
+    damageNumbers: true,
+    lowGraphics: false,
+    portalStyle: 'violet',
+    ownedPortals: ['violet'],
+    posesOwned: false,
+    victoryPoses: false,
     inputMode: startingInputMode(),
     challenge: null,
     challengeBeaten: false,

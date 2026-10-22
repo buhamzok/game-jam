@@ -17,6 +17,7 @@ import { HeroView, HunterView } from './actors.ts';
 import { BoltsView } from './bolts.ts';
 import { modelHeight } from './characterView.ts';
 import { skinById } from '../skins.ts';
+import { PORTAL_STYLES, portalStyleById } from '../cosmetics.ts';
 import { PortalView } from './portal3d.ts';
 import { PotionView } from './potion3d.ts';
 const CAM = {
@@ -62,10 +63,12 @@ export class GameView {
     private paused = false;
     private landscape = false;
     private shownHero = -1;
+    private lowApplied = false;
 
     constructor(private readonly host: HTMLElement) {
         this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+        this.lowApplied = store.get().lowGraphics;
+        this.renderer.setPixelRatio(this.lowApplied ? 1 : Math.min(window.devicePixelRatio || 1, 1.75));
         this.renderer.domElement.style.display = 'block';
         host.appendChild(this.renderer.domElement);
 
@@ -130,6 +133,17 @@ export class GameView {
         this.last = performance.now();
     }
 
+    /** Apply the HUD graphics settings live: low graphics drops to 1x DPR and halves particles. */
+    private applyGraphics(): void {
+        const s = store.get();
+        if (s.lowGraphics !== this.lowApplied) {
+            this.lowApplied = s.lowGraphics;
+            this.renderer.setPixelRatio(s.lowGraphics ? 1 : Math.min(window.devicePixelRatio || 1, 1.75));
+            this.resize();
+        }
+        this.fx.setPreferences(s.gore, s.lowGraphics);
+    }
+
     private resize(): void {
         const w = Math.max(1, this.host.clientWidth);
         const h = Math.max(1, this.host.clientHeight);
@@ -149,8 +163,10 @@ export class GameView {
     /** Advance the game by `dt` seconds and draw. Exposed so tests can step without rAF. */
     step(dt: number): void {
         const realDt = Math.min(dt, MAX_DT);
+        this.applyGraphics();
         this.world.update(realDt);
         if (this.world.realmVersion !== this.shownRealm) this.changeRealm();
+        this.portal.setColor((portalStyleById(store.get().portalStyle) ?? PORTAL_STYLES[0]).color);
         this.portal.update(this.world.portal, realDt);
         this.potion.update(this.world.potion, realDt);
         this.fx.listenerX = this.world.player.x;

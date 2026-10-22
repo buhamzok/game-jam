@@ -11,7 +11,7 @@ import { store } from '../../state/store.ts';
 import { getModel, type ModelKey } from './assets.ts';
 import { Arena3D } from './arena3d.ts';
 import { CharacterView, modelHeight } from './characterView.ts';
-import { heroIdle } from './actors.ts';
+import { heroIdle, heroPose } from './actors.ts';
 import { HERO_HEIGHTS, HUNTER_HEIGHT } from './gameView.ts';
 
 /** The lineup stands this far back from the arena center, so the camera stays inside the fence. */
@@ -36,10 +36,14 @@ export class MenuScene {
     private last = performance.now();
     private t = 0;
     private portrait = true;
+    private poseAt = Infinity;
+    private poseEnd = -1;
+    private lowApplied = false;
 
     constructor(private readonly host: HTMLElement) {
         this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+        this.lowApplied = store.get().lowGraphics;
+        this.renderer.setPixelRatio(this.lowApplied ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
         this.renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';
         host.appendChild(this.renderer.domElement);
 
@@ -63,7 +67,12 @@ export class MenuScene {
             this.chars.push({ kind: spot.kind, view });
         }
         this.applySkins();
-        this.unsubscribe = store.subscribe(() => this.applySkins());
+        this.applyGraphics();
+        if (store.get().victoryPoses) this.poseAt = 1.4;
+        this.unsubscribe = store.subscribe(() => {
+            this.applySkins();
+            this.applyGraphics();
+        });
 
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(host);
@@ -83,6 +92,15 @@ export class MenuScene {
             view.setSkin(on?.tint ?? 0xffffff, on?.amount ?? 0);
             view.setGlow(on?.glow ?? 0x000000, on?.glowAmount ?? 0);
         }
+    }
+
+    /** Low graphics drops the title renderer to 1x DPR (the shop toggle applies live). */
+    private applyGraphics(): void {
+        const low = store.get().lowGraphics;
+        if (low === this.lowApplied) return;
+        this.lowApplied = low;
+        this.renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
+        this.resize();
     }
 
     private resize(): void {
@@ -106,6 +124,19 @@ export class MenuScene {
     /** Advance and draw (exposed so headless tests can step without rAF). */
     step(dt: number): void {
         this.t += dt;
+        if (this.poseEnd > 0 && this.t >= this.poseEnd) {
+            this.poseEnd = -1;
+            for (const { kind, view } of this.chars) view.play(heroIdle(kind));
+        } else if (this.t >= this.poseAt) {
+            this.poseAt = Infinity;
+            let longest = 0;
+            for (const { kind, view } of this.chars) {
+                const spec = heroPose(kind);
+                view.play(spec, 'victory');
+                longest = Math.max(longest, view.clipDuration(spec.clip) / (spec.speed ?? 1));
+            }
+            this.poseEnd = this.t + longest + 0.4;
+        }
         for (const { view } of this.chars) view.update(dt);
         // slow drift; on portrait the lineup sits in the upper middle, above the buttons
         // landscape: aim right of the lineup so it sits left of the menu panel

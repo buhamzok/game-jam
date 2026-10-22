@@ -612,7 +612,7 @@ export class Hunter {
         this.kvy += Math.sin(opts.angle) * opts.knock * ks;
         if (dmg > 0 && !opts.dot) this.w.onHitLanded();
         if (dmg > 0) {
-            this.w.fx.text(this.x, this.y, String(Math.round(dmg)), opts.dot ? 0xf87171 : this.state === 'broken' ? C.counter : 0xffffff, opts.dot ? 22 : 28, 0.6);
+            this.w.damageText(this.x, this.y, String(Math.round(dmg)), opts.dot ? 0xf87171 : this.state === 'broken' ? C.counter : 0xffffff, opts.dot ? 22 : 28, 0.6);
             // a spurt of blood out the far side, bigger for heavier hits
             if (dmg >= T.gore.minDamage || opts.dot) this.w.fx.blood(this.x, this.y, opts.angle, opts.dot ? 0.4 : Math.min(T.gore.maxAmount, dmg / T.gore.damagePerUnit));
             if (!opts.dot) this.lastHitAngle = opts.angle;

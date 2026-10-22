@@ -2,7 +2,7 @@
  * Cosmetic skins: a recolor of each monster's model (no gameplay effect).
  * Each one unlocks with Souls earned in runs, or with RUN Bits in the shop
  * (`rundot/shop.config.json`: the shop item `itemId` grants entitlement
- * `skin_<id>`). The "All skins" bundle grants all six.
+ * `skin_<id>`). The "All skins" bundle grants every skin.
  */
 import type { MonsterKind } from './tuning.ts';
 
@@ -27,6 +27,9 @@ export const SKINS: SkinDef[] = [
     { id: 'vamp_bloodmoon', monster: 'vampire', name: 'Blood Moon', tint: 0xb0122e, amount: 0.7, glow: 0xff1744, glowAmount: 0.2, souls: 400 },
     { id: 'stitch_pumpkin', monster: 'stitched', name: 'Pumpkin King', tint: 0xff7a1a, amount: 0.75, glow: 0xffa040, glowAmount: 0.1, souls: 150 },
     { id: 'stitch_toxic', monster: 'stitched', name: 'Toxic', tint: 0x3ddc5a, amount: 0.75, glow: 0x7cff4f, glowAmount: 0.22, souls: 400 },
+    { id: 'wolf_moonwraith', monster: 'werewolf', name: 'Moon Wraith', tint: 0x9fd6ff, amount: 0.82, glow: 0x60a5fa, glowAmount: 0.12, souls: 600 },
+    { id: 'vamp_thornrose', monster: 'vampire', name: 'Thorn Rose', tint: 0xd9468f, amount: 0.7, glow: 0xff8ac2, glowAmount: 0.14, souls: 600 },
+    { id: 'stitch_graverot', monster: 'stitched', name: 'Grave Rot', tint: 0x7f8f3a, amount: 0.8, glow: 0xa3e635, glowAmount: 0.14, souls: 600 },
 ];
 
 export const skinById = (id: string | undefined): SkinDef | undefined => SKINS.find((s) => s.id === id);

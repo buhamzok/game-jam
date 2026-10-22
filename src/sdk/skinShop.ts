@@ -5,6 +5,7 @@
  * - Owned skins: unlocked with Souls (device cache `ttt.skins`) or bought in
  *   the RUN shop (server entitlements `skin_<id>`, or the bundle).
  * - Equipped skin per monster: device cache `ttt.equip`.
+ * - Portal colors and the victory pose: device cache `ttt.cosmetics`.
  *
  * Posture: every SDK call can reject; nothing here throws into the game.
  * Outside the RUN host everything lives in memory for the session.
@@ -14,11 +15,26 @@ import { sdkReady } from './runSdk.ts';
 import { store } from '../state/store.ts';
 import { telemetry } from './dailyHunt.ts';
 import { SKINS, skinById, shopItemFor, entitlementFor, BUNDLE_ITEM } from '../game/skins.ts';
+import { PORTAL_STYLES, portalStyleById, VICTORY_POSE } from '../game/cosmetics.ts';
 import type { MonsterKind } from '../game/tuning.ts';
 
 const KEY_SOULS = 'ttt.souls';
 const KEY_SKINS = 'ttt.skins';
 const KEY_EQUIP = 'ttt.equip';
+const KEY_COSMETICS = 'ttt.cosmetics';
+
+interface Cosmetics {
+    portal: string;
+    portals: string[];
+    poses: boolean;
+    poseOn: boolean;
+}
+
+let cosmetics: Cosmetics = { portal: PORTAL_STYLES[0].id, portals: [PORTAL_STYLES[0].id], poses: false, poseOn: false };
+
+function saveCosmetics(): void {
+    cacheSet(KEY_COSMETICS, JSON.stringify(cosmetics));
+}
 
 export async function cacheGet(key: string): Promise<string | null> {
     if (!sdkReady()) return null;
@@ -54,10 +70,27 @@ function publishOwned(): void {
 
 /** Boot: Souls, equipped skins and owned skins. Then the shop catalog and server ownership in the background. */
 export async function loadSkins(): Promise<void> {
-    const [souls, skins, equip] = await Promise.all([cacheGet(KEY_SOULS), cacheGet(KEY_SKINS), cacheGet(KEY_EQUIP)]);
+    const [souls, skins, equip, cos] = await Promise.all([cacheGet(KEY_SOULS), cacheGet(KEY_SKINS), cacheGet(KEY_EQUIP), cacheGet(KEY_COSMETICS)]);
     soulUnlocked = new Set(parseJson<string[]>(skins, []).filter((id) => skinById(id)));
     const equipped = parseJson<Partial<Record<MonsterKind, string>>>(equip, {});
-    store.patch({ souls: Math.max(0, Math.floor(Number(souls) || 0)), equippedSkins: equipped });
+    const saved = parseJson<Partial<Cosmetics>>(cos, {});
+    const portals = [PORTAL_STYLES[0].id, ...(Array.isArray(saved.portals) ? saved.portals : [])].filter(
+        (id, i, all) => portalStyleById(id) && all.indexOf(id) === i,
+    );
+    cosmetics = {
+        portal: portalStyleById(saved.portal) && portals.includes(saved.portal!) ? saved.portal! : PORTAL_STYLES[0].id,
+        portals,
+        poses: saved.poses === true,
+        poseOn: saved.poses === true && saved.poseOn === true,
+    };
+    store.patch({
+        souls: Math.max(0, Math.floor(Number(souls) || 0)),
+        equippedSkins: equipped,
+        portalStyle: cosmetics.portal,
+        ownedPortals: portals,
+        posesOwned: cosmetics.poses,
+        victoryPoses: cosmetics.poseOn,
+    });
     publishOwned();
     void refreshShop();
 }
@@ -119,6 +152,51 @@ export function unlockWithSouls(skinId: string): boolean {
     equip(skin.monster, skinId);
     telemetry('skin_unlock_souls', { skin: skinId });
     return true;
+}
+
+/** Equip an owned portal color. */
+export function setPortalStyle(id: string): void {
+    if (!store.get().ownedPortals.includes(id)) return;
+    cosmetics.portal = id;
+    saveCosmetics();
+    store.patch({ portalStyle: id });
+}
+
+/** Unlock a portal color with Souls. Returns false when unaffordable or already owned. */
+export function unlockPortal(id: string): boolean {
+    const def = portalStyleById(id);
+    const s = store.get();
+    if (!def || s.ownedPortals.includes(id) || s.souls < def.souls) return false;
+    cosmetics.portals = [...cosmetics.portals, id];
+    cosmetics.portal = id;
+    saveCosmetics();
+    const souls = s.souls - def.souls;
+    cacheSet(KEY_SOULS, String(souls));
+    store.patch({ souls, portalStyle: id, ownedPortals: cosmetics.portals });
+    telemetry('portal_unlock_souls', { portal: id });
+    return true;
+}
+
+/** Unlock the victory pose with Souls. Returns false when unaffordable or already owned. */
+export function unlockVictoryPoses(): boolean {
+    const s = store.get();
+    if (cosmetics.poses || s.souls < VICTORY_POSE.souls) return false;
+    cosmetics.poses = true;
+    cosmetics.poseOn = true;
+    saveCosmetics();
+    const souls = s.souls - VICTORY_POSE.souls;
+    cacheSet(KEY_SOULS, String(souls));
+    store.patch({ souls, posesOwned: true, victoryPoses: true });
+    telemetry('pose_unlock_souls', {});
+    return true;
+}
+
+/** Turn the owned victory pose on or off. */
+export function setVictoryPoses(on: boolean): void {
+    if (!store.get().posesOwned) return;
+    cosmetics.poseOn = on;
+    saveCosmetics();
+    store.patch({ victoryPoses: on });
 }
 
 /** One idempotency key per intended purchase, reused on retry (see the shop docs). */

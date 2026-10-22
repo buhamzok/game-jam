@@ -3,7 +3,7 @@
     {
       "itemId": "skins_all",
       "name": "All monster skins",
-      "description": "All six skins for the Werewolf, the Vampire and the Stitched. Cosmetic only.",
+      "description": "Every skin for the Werewolf, the Vampire and the Stitched. Cosmetic only.",
       "category": "non_consumable",
       "price": {
         "type": "direct_purchase",
@@ -182,6 +182,84 @@
         "skin"
       ],
       "sortOrder": 7
+    },
+    {
+      "itemId": "skin_wolf_moonwraith",
+      "name": "Moon Wraith skin",
+      "description": "Werewolf: pale moonlit fur with a cold blue aura. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "150"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_wolf_moonwraith",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 8
+    },
+    {
+      "itemId": "skin_vamp_thornrose",
+      "name": "Thorn Rose skin",
+      "description": "Vampire: deep rose with a soft pink glow. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "150"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_vamp_thornrose",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 9
+    },
+    {
+      "itemId": "skin_stitch_graverot",
+      "name": "Grave Rot skin",
+      "description": "Stitched: mossy grave-green with a sickly lime glow. Cosmetic only.",
+      "category": "non_consumable",
+      "price": {
+        "type": "bucks",
+        "value": "150"
+      },
+      "entitlements": [
+        {
+          "entitlementId": "skin_stitch_graverot",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": [
+        "skin"
+      ],
+      "sortOrder": 10
     }
   ],
   "sales": [],

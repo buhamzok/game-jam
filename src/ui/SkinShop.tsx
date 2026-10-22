@@ -1,15 +1,26 @@
 /**
- * Skin shop (from the menu). One row per monster: the classic look plus two
- * skins. A skin unlocks with Souls (earned in runs) or with RUN Bits; the
- * "All skins" bundle sells for real money through the RUN shop. Prices from
- * the RUN catalog appear once it loads; without the host only Souls work.
+ * Cosmetic shop (from the menu). One row per monster: the classic look plus
+ * its skins. A skin unlocks with Souls (earned in runs) or with RUN Bits; the
+ * "All skins" bundle sells for real money through the RUN shop. Portal colors
+ * and the victory pose unlock with Souls. Prices from the RUN catalog appear
+ * once it loads; without the host only Souls work.
  */
 import { useEffect, useState } from 'react';
 import { store, useStore } from '../state/store.ts';
 import { audio } from '../game/audio.ts';
 import { T, type MonsterKind } from '../game/tuning.ts';
 import { SKINS, BUNDLE_ITEM, shopItemFor, type SkinDef } from '../game/skins.ts';
-import { buyInShop, equip, refreshShop, unlockWithSouls } from '../sdk/skinShop.ts';
+import { PORTAL_STYLES, VICTORY_POSE } from '../game/cosmetics.ts';
+import {
+    buyInShop,
+    equip,
+    refreshShop,
+    setPortalStyle,
+    setVictoryPoses,
+    unlockPortal,
+    unlockVictoryPoses,
+    unlockWithSouls,
+} from '../sdk/skinShop.ts';
 import { telemetry } from '../sdk/dailyHunt.ts';
 import portraitWerewolf from '../assets/portrait-werewolf.png';
 import portraitVampire from '../assets/portrait-vampire.png';
@@ -46,6 +57,10 @@ export default function SkinShop() {
     const owned = useStore((s) => s.ownedSkins);
     const equipped = useStore((s) => s.equippedSkins);
     const prices = useStore((s) => s.shopPrices);
+    const ownedPortals = useStore((s) => s.ownedPortals);
+    const portalStyle = useStore((s) => s.portalStyle);
+    const posesOwned = useStore((s) => s.posesOwned);
+    const victoryPoses = useStore((s) => s.victoryPoses);
     const [status, setStatus] = useState<Status>(null);
     const [busy, setBusy] = useState('');
 
@@ -92,7 +107,7 @@ export default function SkinShop() {
                 return (
                     <div key={kind} className="rounded-2xl bg-black/45 p-3">
                         <p className="mb-2 text-[11px] font-black tracking-[0.25em] text-amber-300">{T.monsters[kind].name.toUpperCase()}</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                             {/* classic look */}
                             <div className="flex flex-col items-center gap-1 text-center">
                                 <button
@@ -161,9 +176,72 @@ export default function SkinShop() {
                 );
             })}
 
+            <div className="rounded-2xl bg-black/45 p-3">
+                <p className="mb-2 text-[11px] font-black tracking-[0.25em] text-amber-300">PORTAL COLOR</p>
+                <div className="grid grid-cols-4 gap-2">
+                    {PORTAL_STYLES.map((style) => {
+                        const owned = ownedPortals.includes(style.id);
+                        const on = portalStyle === style.id;
+                        const msg = status?.id === `portal_${style.id}` ? status.text : '';
+                        return (
+                            <div key={style.id} className="flex flex-col items-center gap-1 text-center">
+                                <button
+                                    type="button"
+                                    aria-label={style.name}
+                                    onClick={() => {
+                                        audio.play('click');
+                                        if (owned) setPortalStyle(style.id);
+                                        else if (!unlockPortal(style.id)) setStatus({ id: `portal_${style.id}`, text: `Need ${style.souls - souls} more Souls` });
+                                    }}
+                                    className={`grid h-12 w-12 place-items-center rounded-full ring-2 ${on ? 'ring-amber-400' : 'ring-white/20'}`}
+                                    style={{ background: `radial-gradient(circle at 45% 40%, #fff8, ${hex(style.color)} 55%, #0006)` }}
+                                >
+                                    <span className="h-2 w-2 rounded-full bg-white/80" />
+                                </button>
+                                <p className="text-[10px] font-black text-white">{style.name.replace(' Rift', '')}</p>
+                                {owned ? (
+                                    <p className="text-[10px] font-bold text-white/50">{on ? 'Active' : 'Tap'}</p>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        disabled={souls < style.souls}
+                                        className="rounded-lg bg-violet-500 px-1 py-1 text-[10px] font-black text-white active:scale-95 disabled:opacity-40"
+                                        onClick={() => {
+                                            audio.play('click');
+                                            if (!unlockPortal(style.id)) setStatus({ id: `portal_${style.id}`, text: `Need ${style.souls - souls} more Souls` });
+                                        }}
+                                    >
+                                        {style.souls} Souls
+                                    </button>
+                                )}
+                                {msg && <p className="text-[10px] font-bold text-amber-200">{msg}</p>}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="rounded-2xl bg-black/45 p-3">
+                <p className="mb-1 text-[11px] font-black tracking-[0.25em] text-amber-300">VICTORY POSE</p>
+                <p className="mb-2 text-xs font-bold text-white/60">Your team strikes a pose on the title screen. Cosmetic only.</p>
+                <button
+                    type="button"
+                    className="w-full rounded-xl bg-violet-500 px-3 py-2 text-sm font-black text-white active:scale-95 disabled:opacity-40"
+                    disabled={!posesOwned && souls < VICTORY_POSE.souls}
+                    onClick={() => {
+                        audio.play('click');
+                        if (posesOwned) setVictoryPoses(!victoryPoses);
+                        else if (!unlockVictoryPoses()) setStatus({ id: 'pose', text: `Need ${VICTORY_POSE.souls - souls} more Souls` });
+                    }}
+                >
+                    {posesOwned ? `Victory pose: ${victoryPoses ? 'ON' : 'OFF'}` : `${VICTORY_POSE.name}: ${VICTORY_POSE.souls} Souls`}
+                </button>
+                {status?.id === 'pose' && <p className="mt-1 text-[10px] font-bold text-amber-200">{status.text}</p>}
+            </div>
+
             {bundlePrice && !allOwned && (
                 <div className="rounded-2xl bg-gradient-to-r from-amber-500/25 to-fuchsia-500/25 p-3 ring-2 ring-amber-400/60">
-                    <p className="text-sm font-black text-white">All 6 skins</p>
+                    <p className="text-sm font-black text-white">All {SKINS.length} skins</p>
                     <p className="text-xs font-bold text-white/70">Every look for the whole tag team, now and forever.</p>
                     <button
                         type="button"

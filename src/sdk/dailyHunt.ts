@@ -64,13 +64,22 @@ export async function loadDailyHunt(): Promise<void> {
     const mineToday = dailyBest && dailyBest.date === day ? dailyBest.wave : 0;
     const streakState = streak ? (JSON.parse(streak) as { date: string; count: number }) : null;
     const streakCount = streakState && (streakState.date === day || streakState.date === yesterday()) ? streakState.count : 0;
-    const [shake, flash] = await Promise.all([cacheGet('ttt.shake'), cacheGet('ttt.flash')]);
+    const [shake, flash, gore, damageNumbers, lowGraphics] = await Promise.all([
+        cacheGet('ttt.shake'),
+        cacheGet('ttt.flash'),
+        cacheGet('ttt.gore'),
+        cacheGet('ttt.damageNumbers'),
+        cacheGet('ttt.lowGraphics'),
+    ]);
     store.patch({
         bestWave: Math.max(0, Number(best) || 0),
         dailyBest: mineToday,
         streak: streakCount,
         shake: shake !== '0',
         flash: flash !== '0',
+        gore: gore !== '0',
+        damageNumbers: damageNumbers !== '0',
+        lowGraphics: lowGraphics === '1',
     });
 }
 
