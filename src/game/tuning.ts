@@ -435,6 +435,18 @@ export const T = {
         jab: { heavy: false, windup: 0.45, active: 0.06, recover: 0.4, range: 105, arcDeg: 80, dmg: 6, lunge: 70 } as EnemyAttackDef,
         body: 30,
     },
+    /** Combo meter: hits landed in a row, broken by `timeout` seconds without a hit or by taking a hit. Grades by length. */
+    combo: {
+        timeout: 2.5,
+        grades: [
+            { at: 60, grade: 'SS' },
+            { at: 35, grade: 'S' },
+            { at: 20, grade: 'A' },
+            { at: 10, grade: 'B' },
+            { at: 5, grade: 'C' },
+            { at: 0, grade: 'D' },
+        ],
+    },
     /** Blood on hits: hits under minDamage (bat nibbles, auras) stay clean; amount = dmg / damagePerUnit, capped. */
     gore: { minDamage: 5, damagePerUnit: 14, maxAmount: 2.5 },
 

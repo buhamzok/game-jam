@@ -29,6 +29,11 @@ const HURT_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfHurt', vampire
 const TRANS_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfTransform', vampire: 'vampTransform', stitched: 'stitchTransform' };
 const ROUND_VOICE: SfxName[] = ['vo_round1', 'vo_round2', 'vo_round3', 'vo_round4', 'vo_round5'];
 
+/** Combo grade for a run of `n` hits (T.combo.grades). */
+export function gradeFor(n: number): string {
+    return T.combo.grades.find((g) => n >= g.at)?.grade ?? 'D';
+}
+
 /** Boss waves: the Gravelord rises every N waves. */
 export function isBossWave(wave: number): boolean {
     return wave % T.difficulty.bossEvery === 0;
@@ -134,6 +139,56 @@ export class World {
         return this.boons[id] ?? 0;
     }
 
+    /** Combo meter and run stats (end screen). */
+    private combo = 0;
+    private comboT = 0;
+    private stats = { maxCombo: 0, hits: 0, perfects: 0, counters: 0, damageTaken: 0 };
+
+    /** A player hit landed on a hunter (not a bleed tick, not a block): the combo grows. */
+    onHitLanded(): void {
+        this.combo++;
+        this.comboT = T.combo.timeout;
+        this.stats.hits++;
+        if (this.combo > this.stats.maxCombo) this.stats.maxCombo = this.combo;
+        const grade = gradeFor(this.combo);
+        this.comboDirty = true;
+        // a new grade gets a callout
+        if (this.combo === T.combo.grades.find((g) => g.grade === grade)?.at && this.combo >= 10) {
+            const p = this.player;
+            this.fx.text(p.x + 60, p.y - 150, `${grade}!`, grade.startsWith('S') ? 0xfde68a : 0xc4b5fd, 44, 0.9);
+        }
+    }
+
+    /** The end screen's numbers. */
+    private summary(): NonNullable<ReturnType<typeof store.get>['runStats']> {
+        const st = this.stats;
+        return {
+            maxCombo: st.maxCombo,
+            grade: gradeFor(st.maxCombo),
+            hits: st.hits,
+            perfects: st.perfects,
+            counters: st.counters,
+            bosses: this.bossKills,
+            damageTaken: Math.round(st.damageTaken),
+            seconds: Math.round(this.clock),
+            boons: Object.values(this.boons).reduce((a, b) => a + (b ?? 0), 0),
+        };
+    }
+
+    private breakCombo(): void {
+        if (this.combo === 0) return;
+        this.combo = 0;
+        this.comboDirty = true;
+    }
+
+    /** Combo changes reach the HUD once per frame (a special can land six hits at once). */
+    private comboDirty = false;
+    private flushCombo(): void {
+        if (!this.comboDirty) return;
+        this.comboDirty = false;
+        store.patch({ combo: this.combo, comboGrade: this.combo > 0 ? gradeFor(this.combo) : '' });
+    }
+
     /** First-run tutorial before wave 1 (null otherwise). */
     tutorial: Tutorial | null = null;
 
@@ -169,7 +224,7 @@ export class World {
             this.tutorial.setKnight(k);
             store.patch({ tutorialSkip: false, tutorialRequested: false });
         }
-        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: this.tier(), boonChoice: null, boonPick: null, boons: {} });
+        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: this.tier(), boonChoice: null, boonPick: null, boons: {}, combo: 0, comboGrade: '', runStats: null });
         if (this.startRealm > 0) {
             store.patch({ banner: this.realm.name, bannerSub: `${this.realm.sub} · starting at wave ${this.wave + 1}` });
             this.bannerTimer = PORTAL.banner;
@@ -246,7 +301,7 @@ export class World {
             this.fx.sound('gameOver');
             this.fx.sound('vo_gameover', { delay: 0.9 });
         }
-        store.patch({ gameOver: true, pvpResult: win ? 'win' : 'loss', finalWave: 0, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls });
+        store.patch({ gameOver: true, pvpResult: win ? 'win' : 'loss', finalWave: 0, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls, runStats: this.summary() });
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         this.gainXp(win ? XP.pvpWin : XP.pvpLoss);
         const rival = this.rivalTeam!;
@@ -386,9 +441,11 @@ export class World {
         if (p.invuln > 0 || p.phasing) return 'immune';
 
         const hurtVoice = HURT_VOICE[p.kind()];
+        this.breakCombo();
         // Iron Hide boon
         dmg = Math.max(1, Math.round(dmg * (1 - BOON_TUNING.iron) ** this.boon('iron')));
         p.takeHit(dmg, fromAngle);
+        this.stats.damageTaken += dmg;
         this.waveHurt = true;
         this.fx.sound('hit', { volume: 0.85 });
         this.fx.sound(hurtVoice);
@@ -433,6 +490,7 @@ export class World {
         if (result !== 'parried') return;
         if (atk.heavy) {
             p.startCounter(h);
+            this.stats.counters++;
             this.tutorialEvent('counter');
             return;
         }
@@ -660,6 +718,7 @@ export class World {
 
     private perfectDodge(): void {
         const p = this.player;
+        this.stats.perfects++;
         this.witching = T.witching.duration + BOON_TUNING.echo * this.boon('echo');
         p.perfectCd = T.witching.cooldown;
         p.addEnergy(T.energy.perPerfect);
@@ -981,6 +1040,10 @@ export class World {
         this.witching = Math.max(0, this.witching - realDt);
         this.clock += realDt;
         this.multiKillCd = Math.max(0, this.multiKillCd - realDt);
+        if (this.combo > 0 && dt > 0) {
+            this.comboT -= dt;
+            if (this.comboT <= 0) this.breakCombo();
+        }
         // the tutorial knight moves a little slower so the tells are easy to read
         const enemyDt = dt * (this.witching > 0 ? T.witching.enemyTimeScale : 1) * (this.tutorial ? 0.8 : 1);
 
@@ -997,6 +1060,7 @@ export class World {
         this.rod = Math.max(0, this.rod - realDt);
         if (this.mode === 'pvp') this.updatePvp(realDt);
         else this.updateWaves(realDt);
+        this.flushCombo();
         this.syncHud();
     }
 
@@ -1421,7 +1485,7 @@ export class World {
         this.witching = 0;
         // Souls for skins: KOs, waves cleared (the last one was not), bosses
         const souls = Math.round((this.kills * SOULS.perKill + Math.max(0, this.wave - 1) * SOULS.perWave + this.bossKills * SOULS.perBoss) * (1 + BOON_TUNING.harvest * this.boon('harvest')));
-        store.patch({ gameOver: true, finalWave: this.wave, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls });
+        store.patch({ gameOver: true, finalWave: this.wave, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls, runStats: this.summary() });
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         // the RUN app's own Share button now sends this run as a challenge
         // a run from a later realm (realm select) is practice: no challenge, best wave or Daily Hunt score

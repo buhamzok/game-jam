@@ -610,6 +610,7 @@ export class Hunter {
         const ks = this.def.boss ? T.boss.knockScale : 1;
         this.kvx += Math.cos(opts.angle) * opts.knock * ks;
         this.kvy += Math.sin(opts.angle) * opts.knock * ks;
+        if (dmg > 0 && !opts.dot) this.w.onHitLanded();
         if (dmg > 0) {
             this.w.fx.text(this.x, this.y, String(Math.round(dmg)), opts.dot ? 0xf87171 : this.state === 'broken' ? C.counter : 0xffffff, opts.dot ? 22 : 28, 0.6);
             // a spurt of blood out the far side, bigger for heavier hits

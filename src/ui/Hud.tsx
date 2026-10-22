@@ -18,6 +18,56 @@ import { sendChallenge } from '../sdk/challenge.ts';
 import { freePoints } from '../sdk/progress.ts';
 import { boonDef, type BoonId } from '../game/boons.ts';
 
+const GRADE_COLOR: Record<string, string> = { SS: '#fde68a', S: '#fbbf24', A: '#c4b5fd', B: '#93c5fd', C: '#86efac', D: '#d1d5db' };
+
+/** Combo meter: hits in a row and the grade, on the right edge; pops on every hit. */
+function ComboMeter({ combo, grade }: { combo: number; grade: string }) {
+    if (combo < 3) return null;
+    const color = GRADE_COLOR[grade] ?? '#fff';
+    return (
+        <div className="absolute right-3 top-[19%] flex flex-col items-end">
+            <div key={combo} className="stay-pop flex items-baseline gap-1.5 drop-shadow-[0_3px_0_rgba(0,0,0,0.85)]">
+                <span className="text-4xl font-black italic tabular-nums text-white">{combo}</span>
+                <span className="text-sm font-black tracking-widest text-white/80">HITS</span>
+            </div>
+            <span className="text-3xl font-black italic leading-none drop-shadow-[0_3px_0_rgba(0,0,0,0.85)]" style={{ color }}>
+                {grade}
+            </span>
+        </div>
+    );
+}
+
+/** End screen: the run in numbers, with the best combo's grade. */
+function RunSummary({ s }: { s: NonNullable<ReturnType<typeof store.get>['runStats']> }) {
+    const mmss = `${Math.floor(s.seconds / 60)}:${String(s.seconds % 60).padStart(2, '0')}`;
+    const cells: [string, string | number][] = [
+        ['BEST COMBO', s.maxCombo],
+        ['PERFECT DODGES', s.perfects],
+        ['COUNTERS', s.counters],
+        ['BOSSES', s.bosses],
+        ['DAMAGE TAKEN', s.damageTaken],
+        ['TIME', mmss],
+    ];
+    return (
+        <div className="flex w-full max-w-[340px] items-center gap-3 rounded-2xl bg-black/50 p-3 ring-1 ring-white/10">
+            <div className="flex w-16 shrink-0 flex-col items-center">
+                <span className="text-[9px] font-black tracking-[0.2em] text-white/50">STYLE</span>
+                <span className="text-5xl font-black italic leading-none" style={{ color: GRADE_COLOR[s.grade] ?? '#fff' }}>
+                    {s.grade}
+                </span>
+            </div>
+            <div className="grid flex-1 grid-cols-3 gap-x-2 gap-y-1.5 text-center">
+                {cells.map(([k, v]) => (
+                    <div key={k}>
+                        <p className="text-base font-black leading-none text-white tabular-nums">{v}</p>
+                        <p className="mt-0.5 text-[8px] font-black tracking-wider text-white/50">{k}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 /** Portal boon pick: three cards; the portal opens once one is taken. Keys 1 2 3 pick too. */
 function BoonPicker({ choice, owned }: { choice: BoonId[]; owned: Partial<Record<BoonId, number>> }) {
     useEffect(() => {
@@ -270,6 +320,9 @@ export default function Hud() {
     const tutorial = useStore((s) => s.tutorial);
     const boonChoice = useStore((s) => s.boonChoice);
     const boons = useStore((s) => s.boons);
+    const combo = useStore((s) => s.combo);
+    const comboGrade = useStore((s) => s.comboGrade);
+    const runStats = useStore((s) => s.runStats);
     const xpEarned = useStore((s) => s.xpEarned);
     const levelsGained = useStore((s) => s.levelsGained);
     const points = useStore((s) => freePoints(s));
@@ -381,6 +434,8 @@ export default function Hud() {
                 </div>
             )}
 
+            {!gameOver && <ComboMeter combo={combo} grade={comboGrade} />}
+
             {boonChoice && !gameOver && <BoonPicker choice={boonChoice} owned={boons} />}
 
             {tutorial && !gameOver && (
@@ -426,6 +481,7 @@ export default function Hud() {
                         {pvpResult === 'win' ? `You beat ${rival?.name ?? 'your rival'}'s tag team` : `${rival?.name ?? 'Your rival'}'s team wins this one`}
                         {rival?.bot ? ' (bot)' : ''}
                     </p>
+                    {runStats && <RunSummary s={runStats} />}
                     {soulsEarned > 0 && (
                         <p className="text-sm font-black text-violet-200 tabular-nums">
                             {'\u{1F47B}'} +{soulsEarned} Souls ({souls} total)
@@ -472,6 +528,7 @@ export default function Hud() {
                     <p className="text-lg font-bold text-white/80 tabular-nums">
                         Wave {finalWave} · {finalKills} KOs
                     </p>
+                    {runStats && <RunSummary s={runStats} />}
                     {finalWave > bestWave && startRealm === 0 && (
                         <p className="text-sm font-black tracking-wide text-amber-300">NEW PERSONAL BEST!</p>
                     )}

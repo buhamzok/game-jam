@@ -123,6 +123,11 @@ export interface AppState {
     realmsUnlocked: number;
     /** Realm the next hunt starts in (0 = the Graveyard). Runs started past it are practice for boards and challenges. */
     startRealm: number;
+    /** Combo meter: hits in a row right now (0 = none) and its grade. */
+    combo: number;
+    comboGrade: string;
+    /** End-of-run summary (null while playing). */
+    runStats: { maxCombo: number; grade: string; hits: number; perfects: number; counters: number; bosses: number; damageTaken: number; seconds: number; boons: number } | null;
     /** Portal boons: the 3 on offer (null when no choice is open), the pick from the UI, and this run's stacks. */
     boonChoice: import('../game/boons.ts').BoonId[] | null;
     boonPick: import('../game/boons.ts').BoonId | null;
@@ -211,6 +216,9 @@ let state: AppState = {
     realmTier: 0,
     realmsUnlocked: 0,
     tutorial: null,
+    combo: 0,
+    comboGrade: '',
+    runStats: null,
     boonChoice: null,
     boonPick: null,
     boons: {},
