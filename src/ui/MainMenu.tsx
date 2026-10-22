@@ -11,6 +11,86 @@ import { fetchDailyBoard } from '../sdk/dailyHunt.ts';
 import { freePoints } from '../sdk/progress.ts';
 import { LevelBar } from './Upgrades.tsx';
 import { REALMS } from '../game/realms.ts';
+import { claimChest, claimQuest } from '../sdk/quests.ts';
+import { chestReward } from '../game/quests.ts';
+
+/** Daily quests and the daily chest. */
+function QuestsPanel({ onClose }: { onClose: () => void }) {
+    const q = useStore((s) => s.quests);
+    const [opened, setOpened] = useState<{ souls: number; xp: number } | null>(null);
+    if (!q) return null;
+    const chest = chestReward(q.chestStreak);
+    return (
+        <div className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center bg-black/70 px-5" onClick={onClose}>
+            <div className="w-full max-w-sm rounded-2xl bg-surface/95 p-4 ring-1 ring-white/15" onClick={(e) => e.stopPropagation()}>
+                <p className="text-center text-lg font-black tracking-[0.3em] text-primary">DAILY QUESTS</p>
+                <p className="text-center text-[11px] font-bold text-white/50">New quests every day. Rewards: Souls and XP.</p>
+
+                <div className={`mt-3 flex items-center gap-3 rounded-xl p-3 ${q.chestReady ? 'bg-amber-400/15 ring-2 ring-amber-400/70' : 'bg-black/40 ring-1 ring-white/10'}`}>
+                    <span className="text-3xl">{q.chestReady ? '\u{1F381}' : '\u{1F4E6}'}</span>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-black text-white">Daily chest · day {q.chestStreak}</p>
+                        <p className="text-[11px] font-bold text-white/60">
+                            {opened
+                                ? `Opened: +${opened.souls} Souls, +${opened.xp} XP`
+                                : q.chestReady
+                                  ? `+${chest.souls} Souls, +${chest.xp} XP. Come back daily: it grows to day 7.`
+                                  : 'Opened today. Come back tomorrow to keep the streak.'}
+                        </p>
+                    </div>
+                    {q.chestReady && (
+                        <button
+                            type="button"
+                            className="shrink-0 rounded-lg bg-amber-400 px-3 py-2 text-xs font-black text-black shadow-[0_3px_0_#92400e] active:translate-y-0.5"
+                            onClick={() => {
+                                audio.play('parry', { volume: 0.7 });
+                                setOpened(claimChest());
+                            }}
+                        >
+                            OPEN
+                        </button>
+                    )}
+                </div>
+
+                <div className="mt-3 flex flex-col gap-2">
+                    {q.list.map((x) => {
+                        const done = x.progress >= x.target;
+                        return (
+                            <div key={x.id} className="rounded-xl bg-black/40 p-2.5 ring-1 ring-white/10">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className={`text-sm font-black ${x.claimed ? 'text-white/40 line-through' : 'text-white'}`}>{x.text}</p>
+                                    {done && !x.claimed ? (
+                                        <button
+                                            type="button"
+                                            className="shrink-0 animate-pulse rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-black text-white active:scale-95"
+                                            onClick={() => {
+                                                audio.play('parry', { volume: 0.6 });
+                                                claimQuest(x.id);
+                                            }}
+                                        >
+                                            CLAIM
+                                        </button>
+                                    ) : (
+                                        <span className="shrink-0 text-[11px] font-black text-white/60 tabular-nums">{x.claimed ? '\u2713' : `${x.progress} / ${x.target}`}</span>
+                                    )}
+                                </div>
+                                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                                    <div className="h-full rounded-full bg-emerald-400" style={{ width: `${(x.progress / x.target) * 100}%` }} />
+                                </div>
+                                <p className="mt-1 text-[10px] font-bold text-violet-200/80">
+                                    {'\u{1F47B}'} {x.souls} Souls · {x.xp} XP
+                                </p>
+                            </div>
+                        );
+                    })}
+                </div>
+                <button type="button" className="mt-4 w-full rounded-xl bg-primary py-2.5 text-base font-black text-black active:scale-95" onClick={onClose}>
+                    CLOSE
+                </button>
+            </div>
+        </div>
+    );
+}
 
 const title = (name: string) => name.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 
@@ -148,6 +228,10 @@ export default function MainMenu() {
     const inputMode = useStore((s) => s.inputMode);
     const points = useStore((s) => freePoints(s));
     const [help, setHelp] = useState(false);
+    const [questsOpen, setQuestsOpen] = useState(false);
+    const quests = useStore((s) => s.quests);
+    const questsDone = quests ? quests.list.filter((x) => x.progress >= x.target).length : 0;
+    const claimable = quests ? quests.list.some((x) => x.progress >= x.target && !x.claimed) || quests.chestReady : false;
     useEffect(() => {
         void fetchDailyBoard();
     }, []);
@@ -232,7 +316,7 @@ export default function MainMenu() {
                         </span>
                     </button>
 
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-3 gap-2">
                         <button
                             type="button"
                             className="flex flex-col items-center rounded-xl bg-violet-600/90 py-2 font-black text-white shadow-[0_4px_0_#4c1d95] transition-transform active:translate-y-0.5"
@@ -241,10 +325,22 @@ export default function MainMenu() {
                                 store.patch({ phase: 'skins' });
                             }}
                         >
-                            <span className="text-base tracking-wider">SKINS</span>
+                            <span className="text-sm tracking-wider">SKINS</span>
                             <span className="text-[11px] text-violet-200 tabular-nums">
                                 {'\u{1F47B}'} {souls} Souls
                             </span>
+                        </button>
+                        <button
+                            type="button"
+                            className={`relative flex flex-col items-center rounded-xl bg-emerald-600/90 py-2 font-black text-white shadow-[0_4px_0_#065f46] transition-transform active:translate-y-0.5 ${claimable ? 'ring-2 ring-amber-300' : ''}`}
+                            onClick={() => {
+                                audio.play('click');
+                                setQuestsOpen(true);
+                            }}
+                        >
+                            <span className="text-sm tracking-wider">QUESTS</span>
+                            <span className="text-[11px] text-emerald-100 tabular-nums">{questsDone} / {quests?.list.length ?? 3} done</span>
+                            {claimable && <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-amber-300" />}
                         </button>
                         <button
                             type="button"
@@ -254,8 +350,8 @@ export default function MainMenu() {
                                 setHelp(true);
                             }}
                         >
-                            <span className="text-base tracking-wider">HOW TO PLAY</span>
-                            <span className="text-[11px] text-white/60">controls & tips</span>
+                            <span className="text-sm tracking-wider">HOW TO</span>
+                            <span className="text-[11px] text-white/60">controls</span>
                         </button>
                     </div>
 
@@ -283,6 +379,7 @@ export default function MainMenu() {
             </div>
 
             {help && <HowToPlay onClose={() => setHelp(false)} />}
+            {questsOpen && <QuestsPanel onClose={() => setQuestsOpen(false)} />}
         </div>
     );
 }

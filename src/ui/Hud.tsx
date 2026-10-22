@@ -37,6 +37,24 @@ function ComboMeter({ combo, grade }: { combo: number; grade: string }) {
     );
 }
 
+/** A quest just completed: a short toast at the top, gone after 3 s. */
+function QuestToast() {
+    const toast = useStore((s) => s.questToast);
+    useEffect(() => {
+        if (!toast) return;
+        const t = setTimeout(() => store.patch({ questToast: null }), 3000);
+        return () => clearTimeout(t);
+    }, [toast]);
+    if (!toast) return null;
+    return (
+        <div className="absolute inset-x-0 top-[13%] flex justify-center px-4">
+            <div key={toast.at} className="stay-pop rounded-xl bg-emerald-600/90 px-3 py-1.5 text-center text-xs font-black text-white shadow-lg ring-1 ring-emerald-300/60">
+                {'\u2713'} Quest complete: {toast.text} · claim it on the menu
+            </div>
+        </div>
+    );
+}
+
 /** End screen: the run in numbers, with the best combo's grade. */
 function RunSummary({ s }: { s: NonNullable<ReturnType<typeof store.get>['runStats']> }) {
     const mmss = `${Math.floor(s.seconds / 60)}:${String(s.seconds % 60).padStart(2, '0')}`;
@@ -435,6 +453,7 @@ export default function Hud() {
             )}
 
             {!gameOver && <ComboMeter combo={combo} grade={comboGrade} />}
+            {!gameOver && <QuestToast />}
 
             {boonChoice && !gameOver && <BoonPicker choice={boonChoice} owned={boons} />}
 

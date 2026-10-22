@@ -22,6 +22,7 @@ import { teamPower, type Rival } from '../sdk/pvp.ts';
 import { XP, boostsFor, type Boosts } from './progression.ts';
 import { addXp, unlockRealm } from '../sdk/progress.ts';
 import { Tutorial, type TutorialEvent } from './tutorial.ts';
+import { questEvent } from '../sdk/quests.ts';
 import { BOON_TUNING, applyBoon, boonDef, rollBoons, type BoonId } from './boons.ts';
 
 /** Each monster's pain voice, transformation voice and swing. */
@@ -149,7 +150,11 @@ export class World {
         this.combo++;
         this.comboT = T.combo.timeout;
         this.stats.hits++;
-        if (this.combo > this.stats.maxCombo) this.stats.maxCombo = this.combo;
+        if (this.combo > this.stats.maxCombo) {
+            this.stats.maxCombo = this.combo;
+            // daily quest: best combo (reported at the thresholds only)
+            if (this.combo === 20 || this.combo === 35) questEvent('combo', this.combo);
+        }
         const grade = gradeFor(this.combo);
         this.comboDirty = true;
         // a new grade gets a callout
@@ -304,6 +309,8 @@ export class World {
         store.patch({ gameOver: true, pvpResult: win ? 'win' : 'loss', finalWave: 0, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls, runStats: this.summary() });
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         this.gainXp(win ? XP.pvpWin : XP.pvpLoss);
+        if (win) questEvent('pvpwin');
+        questEvent('run');
         const rival = this.rivalTeam!;
         void import('../sdk/pvp.ts').then((p) => p.reportBattle(win, rival)).catch(() => undefined);
     }
@@ -491,6 +498,7 @@ export class World {
         if (atk.heavy) {
             p.startCounter(h);
             this.stats.counters++;
+            questEvent('counter');
             this.tutorialEvent('counter');
             return;
         }
@@ -582,6 +590,7 @@ export class World {
     onBossKilled(h: Hunter): void {
         const p = this.player;
         this.bossKills++;
+        questEvent('boss');
         this.gainXp(this.tierXp(XP.boss));
         this.fx.freeze(0.45);
         this.fx.flash(0xffffff, 0.6);
@@ -719,6 +728,7 @@ export class World {
     private perfectDodge(): void {
         const p = this.player;
         this.stats.perfects++;
+        questEvent('perfect');
         this.witching = T.witching.duration + BOON_TUNING.echo * this.boon('echo');
         p.perfectCd = T.witching.cooldown;
         p.addEnergy(T.energy.perPerfect);
@@ -766,6 +776,7 @@ export class World {
     /** The transform pose ends and the form kicks in. */
     onTransStart(kind: MonsterKind): void {
         this.tutorialEvent('transform');
+        if (!this.tutorial) questEvent('transform');
         const p = this.player;
         const fx = this.fx;
         if (kind === 'stitched') {
@@ -1011,6 +1022,7 @@ export class World {
 
     onHunterKilled(): void {
         this.kills++;
+        if (!this.tutorial) questEvent('kill');
         // Bloodthirst boon
         if (this.boon('thirst') > 0) {
             const p = this.player;
@@ -1294,6 +1306,8 @@ export class World {
         if (this.waveTimer > 0) return;
         this.wave++;
         this.waveTimer = T.waves.delay;
+        // daily quest "reach wave N": full runs only
+        if (this.startRealm === 0) questEvent('wave', this.wave);
         const mods = this.waveMods();
         const bossWave = isBossWave(this.wave);
         if (bossWave) this.spawnBoss(mods);
@@ -1383,6 +1397,7 @@ export class World {
         this.boonChoice = null;
         this.boons = { ...this.boons, [id]: this.boon(id) + 1 };
         applyBoon(this, id);
+        questEvent('boon');
         const d = boonDef(id);
         const p = this.player;
         this.fx.text(p.x, p.y - 120, d.name.toUpperCase(), 0xfde68a, 40, 1.4);
@@ -1490,6 +1505,7 @@ export class World {
         // the RUN app's own Share button now sends this run as a challenge
         // a run from a later realm (realm select) is practice: no challenge, best wave or Daily Hunt score
         const counts = this.startRealm === 0;
+        questEvent('run');
         if (counts) void import('../sdk/challenge.ts').then((c) => c.setChallengeIntent(this.wave, this.kills)).catch(() => undefined);
         // Daily Hunt: remember the run and (when it beat the old best) score it
         // on the RUN daily board. Never blocks or throws into the sim.

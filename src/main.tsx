@@ -46,7 +46,10 @@ async function boot() {
         const { loadDailyHunt } = await import('./sdk/dailyHunt.ts');
         const { loadSkins } = await import('./sdk/skinShop.ts');
         const { loadProgress } = await import('./sdk/progress.ts');
+        const { loadQuests } = await import('./sdk/quests.ts');
         await Promise.all([loadDailyHunt(), loadSkins(), loadProgress()]);
+        // quests read the device cache too; after the rest so Souls and XP are in place for claims
+        await loadQuests();
     } catch (err) {
         console.warn('[Main] Daily Hunt load failed (carrying on)', err);
     }

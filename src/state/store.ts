@@ -123,6 +123,15 @@ export interface AppState {
     realmsUnlocked: number;
     /** Realm the next hunt starts in (0 = the Graveyard). Runs started past it are practice for boards and challenges. */
     startRealm: number;
+    /** Today's quests and the daily chest (see sdk/quests.ts); null until loaded. */
+    quests: {
+        day: string;
+        list: { id: string; text: string; progress: number; target: number; souls: number; xp: number; claimed: boolean }[];
+        chestReady: boolean;
+        chestStreak: number;
+    } | null;
+    /** A quest just completed (in-game toast). */
+    questToast: { text: string; at: number } | null;
     /** Combo meter: hits in a row right now (0 = none) and its grade. */
     combo: number;
     comboGrade: string;
@@ -216,6 +225,8 @@ let state: AppState = {
     realmTier: 0,
     realmsUnlocked: 0,
     tutorial: null,
+    quests: null,
+    questToast: null,
     combo: 0,
     comboGrade: '',
     runStats: null,
