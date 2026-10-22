@@ -70,7 +70,8 @@ export class Player {
 
     private comboTimer = 0;
     private swingDone = false;
-    private dodgeCd = 0;
+    /** Seconds until the next dodge (also: a dodge happened recently while > 0). */
+    dodgeCd = 0;
     private dodgeDx = 0;
     private dodgeDy = 0;
     private trailT = 0;
@@ -479,6 +480,7 @@ export class Player {
     }
 
     private startSpecial(): void {
+        this.w.tutorialEvent('special');
         const p: PounceDef = this.d().special;
         const u = this.unit();
         u.specialCd = this.d().specialCooldown * this.w.boost.cooldown;

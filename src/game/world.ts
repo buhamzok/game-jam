@@ -21,6 +21,7 @@ import type { RivalSpec } from './hunter.ts';
 import { teamPower, type Rival } from '../sdk/pvp.ts';
 import { XP, boostsFor, type Boosts } from './progression.ts';
 import { addXp, unlockRealm } from '../sdk/progress.ts';
+import { Tutorial, type TutorialEvent } from './tutorial.ts';
 
 /** Each monster's pain voice, transformation voice and swing. */
 const HURT_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfHurt', vampire: 'vampHurt', stitched: 'stitchHurt' };
@@ -123,6 +124,9 @@ export class World {
     /** The player's stat points as multipliers (fixed for the run; points are spent between runs). */
     readonly boost: Boosts;
 
+    /** First-run tutorial before wave 1 (null otherwise). */
+    tutorial: Tutorial | null = null;
+
     /** Realm this hunt started in (realm select). Runs started past the first realm do not count for best wave, the Daily Hunt or challenges. */
     readonly startRealm: number = 0;
 
@@ -147,6 +151,14 @@ export class World {
         }
         this.player = new Player(this);
         this.player.y = this.realm.arena.h * 0.22;
+        // first hunt on this device (or a replay from How to Play): the tutorial comes before wave 1
+        if (this.mode === 'hunt' && this.startRealm === 0 && (!s.tutorialDone || s.tutorialRequested)) {
+            this.tutorial = new Tutorial(this);
+            const k = new Hunter(this, 0, -this.realm.arena.h * 0.05, 'knight', { hp: 4, dmg: 0.6, speed: 0.8, windup: 1.5, cooldown: 1.6 });
+            this.hunters.push(k);
+            this.tutorial.setKnight(k);
+            store.patch({ tutorialSkip: false, tutorialRequested: false });
+        }
         store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: this.tier() });
         if (this.startRealm > 0) {
             store.patch({ banner: this.realm.name, bannerSub: `${this.realm.sub} · starting at wave ${this.wave + 1}` });
@@ -312,6 +324,7 @@ export class World {
         if (swarm) this.fx.spray(p.x, p.y, p.facing, s.arcDeg * DEG, C.bat, 10, 620, 6, 0.3);
         let hits = 0;
         const dmg = s.dmg * this.outMult();
+        const tut = this.tutorial;
         for (const h of this.hunters) {
             if (!h.targetable) continue;
             const dx = h.x - p.x;
@@ -325,6 +338,7 @@ export class World {
             h.takeHit(dmg, s.poise, { angle: ang, knock: s.knock, breaker: finisher });
             this.fx.spray(h.x, h.y, ang, 1.2, C.spark, 8);
         }
+        if (hits > 0 && tut) tut.event('hit', 1);
         if (hits > 0) {
             p.addEnergy(T.energy.perHit * hits);
             // Night Swarm lifesteal on every landed hit
@@ -397,9 +411,16 @@ export class World {
         const hitsNow = h.zoneHits(atk, p.x, p.y, p.r);
         const hitsOrigin = p.state === 'dodge' && h.zoneHits(atk, p.dodgeOX, p.dodgeOY, p.r);
         const result = this.resolvePlayerHit(atk.dmg, Math.atan2(p.y - h.y, p.x - h.x), hitsNow, hitsOrigin);
+        if (this.tutorial) {
+            // a dodge that took the player out of reach also counts (the jab lands on air)
+            const dodgedAway = result === 'miss' && p.dodgeCd > 0;
+            if (!atk.heavy && (result === 'dodged' || result === 'perfect' || dodgedAway)) this.tutorialEvent('dodge');
+            else if (result === 'hit' || result === 'blocked' || (atk.heavy && result !== 'parried')) this.tutorialEvent('fail');
+        }
         if (result !== 'parried') return;
         if (atk.heavy) {
             p.startCounter(h);
+            this.tutorialEvent('counter');
             return;
         }
         // parried jab: no damage, small push on the hunter
@@ -654,6 +675,7 @@ export class World {
 
     /** The transform pose ends and the form kicks in. */
     onTransStart(kind: MonsterKind): void {
+        this.tutorialEvent('transform');
         const p = this.player;
         const fx = this.fx;
         if (kind === 'stitched') {
@@ -880,6 +902,7 @@ export class World {
 
     /** Which monster came in; the view uses it for the entry flash. */
     onSwap(): void {
+        this.tutorialEvent('swap');
         this.fx.sound('swap');
         this.fx.flash(0xffffff, 0.12);
         this.syncHud();
@@ -893,6 +916,7 @@ export class World {
 
     onHunterKilled(): void {
         this.kills++;
+        this.tutorialEvent('kill');
         if (this.mode === 'hunt') this.gainXp(this.tierXp(XP.kill));
         // three kills in two seconds: the announcer calls it
         this.killTimes = this.killTimes.filter((t) => this.clock - t < 2);
@@ -916,7 +940,8 @@ export class World {
         this.witching = Math.max(0, this.witching - realDt);
         this.clock += realDt;
         this.multiKillCd = Math.max(0, this.multiKillCd - realDt);
-        const enemyDt = dt * (this.witching > 0 ? T.witching.enemyTimeScale : 1);
+        // the tutorial knight moves a little slower so the tells are easy to read
+        const enemyDt = dt * (this.witching > 0 ? T.witching.enemyTimeScale : 1) * (this.tutorial ? 0.8 : 1);
 
         this.player.update(dt);
         for (const h of this.hunters) h.update(enemyDt);
@@ -1100,7 +1125,24 @@ export class World {
         return this.wave > 1 ? 'The hunters grow stronger' : '';
     }
 
+    /** Tutorial hook: game events that may complete a step. */
+    tutorialEvent(e: TutorialEvent, n = 1): void {
+        this.tutorial?.event(e, n);
+    }
+
     private updateWaves(dt: number): void {
+        if (this.tutorial) {
+            if (store.get().tutorialSkip) this.tutorial.finish();
+            this.tutorial.update(dt);
+            if (!this.tutorial.done) return;
+            // over: drop the knight and start wave 1 after a beat
+            this.tutorial = null;
+            this.hunters = [];
+            this.waveCleared = true;
+            this.waveTimer = T.waves.delay + 0.6;
+            this.kills = 0;
+            return;
+        }
         if (this.bannerTimer > 0) {
             this.bannerTimer -= dt;
             if (this.bannerTimer <= 0) store.patch({ banner: '', bannerSub: '' });

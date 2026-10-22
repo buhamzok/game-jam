@@ -119,9 +119,21 @@ function HowToPlay({ onClose }: { onClose: () => void }) {
                         ))}
                     </tbody>
                 </table>
-                <button type="button" className="mt-4 w-full rounded-xl bg-primary py-2.5 text-base font-black text-black active:scale-95" onClick={onClose}>
-                    GOT IT
-                </button>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                        type="button"
+                        className="rounded-xl bg-white/10 py-2.5 text-sm font-black text-white ring-1 ring-white/15 active:scale-95"
+                        onClick={() => {
+                            store.patch({ tutorialRequested: true, startRealm: 0 });
+                            fight();
+                        }}
+                    >
+                        PLAY TUTORIAL
+                    </button>
+                    <button type="button" className="rounded-xl bg-primary py-2.5 text-base font-black text-black active:scale-95" onClick={onClose}>
+                        GOT IT
+                    </button>
+                </div>
             </div>
         </div>
     );

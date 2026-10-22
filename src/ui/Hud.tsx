@@ -218,6 +218,7 @@ export default function Hud() {
     const souls = useStore((s) => s.souls);
     const level = useStore((s) => s.level);
     const startRealm = useStore((s) => s.startRealm);
+    const tutorial = useStore((s) => s.tutorial);
     const xpEarned = useStore((s) => s.xpEarned);
     const levelsGained = useStore((s) => s.levelsGained);
     const points = useStore((s) => freePoints(s));
@@ -316,6 +317,35 @@ export default function Hud() {
                     <p className="banner-pop text-6xl font-black italic tracking-wider drop-shadow-[0_4px_0_rgba(0,0,0,0.85)]" style={{ color: cutIn.kind === 'stitched' ? '#f87171' : cutIn.kind === 'vampire' ? '#e879f9' : '#fde68a' }}>
                         {cutIn.title}
                     </p>
+                </div>
+            )}
+
+            {tutorial && !gameOver && (
+                <div className="absolute inset-x-0 top-[17%] flex justify-center px-4">
+                    <div key={tutorial.step} className="stay-pop w-full max-w-[380px] rounded-2xl bg-black/70 px-4 py-3 text-center ring-2 ring-amber-400/70 backdrop-blur-sm">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-black tracking-[0.3em] text-amber-300">
+                                TUTORIAL {tutorial.step} / {tutorial.total}
+                            </p>
+                            <button
+                                type="button"
+                                className="pointer-events-auto rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-black tracking-wider text-white/70 active:scale-95"
+                                onClick={() => {
+                                    audio.play('click');
+                                    store.patch({ tutorialSkip: true });
+                                }}
+                            >
+                                SKIP
+                            </button>
+                        </div>
+                        <p className="mt-1 text-base font-black leading-snug text-white">{tutorial.text}</p>
+                        {tutorial.note && <p className="mt-0.5 text-xs font-bold text-amber-200">{tutorial.note}</p>}
+                        <div className="mt-2 flex gap-1">
+                            {Array.from({ length: tutorial.total }, (_, i) => (
+                                <div key={i} className={`h-1 flex-1 rounded-full ${i < tutorial.step - 1 ? 'bg-amber-400' : i === tutorial.step - 1 ? 'bg-amber-200' : 'bg-white/15'}`} />
+                            ))}
+                        </div>
+                    </div>
                 </div>
             )}
 

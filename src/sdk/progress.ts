@@ -13,6 +13,7 @@ import { LEVEL, NO_STATS, levelFor, pointsEarned, pointsSpent, sanitizeStats, st
 const KEY_XP = 'ttt.xp';
 const KEY_STATS = 'ttt.stats';
 const KEY_REALM = 'ttt.realm';
+const KEY_TUTORIAL = 'ttt.tutorial';
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -26,11 +27,12 @@ function saveSoon(): void {
 
 /** Boot: total XP and spent points. */
 export async function loadProgress(): Promise<void> {
-    const [xpRaw, statsRaw, realmRaw] = await Promise.all([cacheGet(KEY_XP), cacheGet(KEY_STATS), cacheGet(KEY_REALM)]);
+    const [xpRaw, statsRaw, realmRaw, tutRaw] = await Promise.all([cacheGet(KEY_XP), cacheGet(KEY_STATS), cacheGet(KEY_REALM), cacheGet(KEY_TUTORIAL)]);
     const xp = Math.max(0, Math.floor(Number(xpRaw) || 0));
     const { level } = levelFor(xp);
     const realmsUnlocked = Math.max(0, Math.min(REALMS.length - 1, Math.floor(Number(realmRaw) || 0)));
-    store.patch({ xp, level, stats: sanitizeStats(parseJson<unknown>(statsRaw, {}), level), realmsUnlocked, startRealm: 0 });
+    // a player with XP already knows the game: no tutorial for them
+    store.patch({ xp, level, stats: sanitizeStats(parseJson<unknown>(statsRaw, {}), level), realmsUnlocked, startRealm: 0, tutorialDone: tutRaw === '1' || xp > 0 });
 }
 
 /** Points earned but not yet spent. */
@@ -67,6 +69,12 @@ export function spendPoint(id: StatId): boolean {
 export function resetStats(): void {
     store.patch({ stats: { ...NO_STATS } });
     cacheSet(KEY_STATS, JSON.stringify(NO_STATS));
+}
+
+export function markTutorialDone(): void {
+    store.patch({ tutorialDone: true, tutorialRequested: false });
+    cacheSet(KEY_TUTORIAL, '1');
+    telemetry('tutorial_done', {});
 }
 
 /** A realm was reached: it can be picked as a starting realm from now on. */

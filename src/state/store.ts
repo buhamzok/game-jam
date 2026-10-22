@@ -123,6 +123,14 @@ export interface AppState {
     realmsUnlocked: number;
     /** Realm the next hunt starts in (0 = the Graveyard). Runs started past it are practice for boards and challenges. */
     startRealm: number;
+    /** First-run tutorial prompt (null when not running). */
+    tutorial: { step: number; total: number; text: string; note: string } | null;
+    /** The tutorial was finished or skipped on this device. */
+    tutorialDone: boolean;
+    /** Replay the tutorial on the next hunt (How to Play). */
+    tutorialRequested: boolean;
+    /** SKIP pressed: the world ends the tutorial on its next frame. */
+    tutorialSkip: boolean;
     /** Current realm danger tier (0 for the first realm). */
     realmTier: number;
     /** Current realm (map) name, and whether its exit portal is open. */
@@ -198,6 +206,10 @@ let state: AppState = {
     levelsGained: 0,
     realmTier: 0,
     realmsUnlocked: 0,
+    tutorial: null,
+    tutorialDone: false,
+    tutorialRequested: false,
+    tutorialSkip: false,
     startRealm: 0,
     mode: 'hunt',
     rival: null,

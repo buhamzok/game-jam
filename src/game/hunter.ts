@@ -119,6 +119,10 @@ export class Hunter {
     /** PVP rival: its monster, look, and whether it already tagged out once. */
     readonly rival: RivalSpec | null;
     taggedOut = false;
+    /** Tutorial knight: what it may do ('idle' never attacks; 'jab' or 'heavy' only that). Null = normal AI. */
+    script: 'idle' | 'jab' | 'heavy' | null = null;
+    /** Tutorial knight: hits leave it at 1 HP until the last step. */
+    immortal = false;
     /** The rival's special for its monster. */
     private special: EnemyAttackDef | null = null;
     /** Boss: seconds until the next Grave Leap is allowed. */
@@ -204,6 +208,7 @@ export class Hunter {
      * player is close, then a quake from anywhere after quakeEvery attacks.
      */
     private pickMove(dist: number): EnemyAttackDef | null {
+        if (this.script) return this.script === 'idle' ? null : this.script === 'jab' ? this.jab : this.heavy;
         if (this.shot) return this.shot;
         if (this.rival) {
             // every few moves its monster's special, from any distance; otherwise close in and strike
@@ -385,6 +390,7 @@ export class Hunter {
         const g = T.hunter.guard;
         if (p.swingId === this.seenSwing) return false;
         this.seenSwing = p.swingId;
+        if (this.script) return false;
         if (!this.canGuard || this.guardCd > 0 || dist > g.range) return false;
         if (!this.rival && this.w.waveNumber() < g.fromWave) return false;
         // rivals guard like a mid-run hunter
@@ -509,6 +515,7 @@ export class Hunter {
         if (this.state === 'broken') dmg *= T.hunter.breakDamageMult;
         // the player's Strength points
         dmg *= this.w.boost.dmg;
+        if (this.immortal) dmg = Math.min(dmg, Math.max(0, this.hp - 1));
         this.hp -= dmg;
         this.sinceHit = 0;
         this.flashT = 0.09;
@@ -562,6 +569,14 @@ export class Hunter {
             }
         }
         return broke;
+    }
+
+    /** Leave the field without a KO (the tutorial knight after a skip). */
+    crumbleQuietly(): void {
+        this.atk = null;
+        this.enter('dead');
+        this.removable = true;
+        this.w.fx.burst(this.x, this.y, 0x6b5a48, 14, 300, 7, 0.5, false);
     }
 
     /** The boss fell: this hunter crumbles to dust (still counts as a KO). */

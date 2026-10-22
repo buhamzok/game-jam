@@ -19,6 +19,16 @@
     animation: banner-pop 1.6s ease-out forwards;
 }
 
+/* Tutorial prompt: pops in and stays (replayed on each new step). */
+@keyframes stay-pop {
+    0% { transform: scale(1.25); opacity: 0; }
+    60% { transform: scale(0.97); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+.stay-pop {
+    animation: stay-pop 0.35s ease-out both;
+}
+
 /* ---------------------------------------------------------------------------
    Viewport + device frame. The game fills the screen in both orientations:
    portrait on phones (touch controls), landscape on PC (keyboard). Page scroll
