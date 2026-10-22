@@ -7,14 +7,20 @@
  * Sized with --u (the width of a 9:16 column), so the layout is the same on
  * every phone and stays sane on a landscape PC screen.
  */
-import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import { memo, useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { input, KEY_HINTS, type Action } from '../game/input.ts';
 import { useStore, store } from '../state/store.ts';
 import { T } from '../game/tuning.ts';
 
 const JOY_RADIUS = 'calc(var(--u) * 0.13)';
 
-function Joystick() {
+/**
+ * Floating joystick. Robust against lost touch events (seen on phones): any
+ * new touch on the left half takes over, and the stick lets go on lift,
+ * cancel, lost capture, a lift anywhere on the page, or the app losing focus.
+ * Memoized, so HUD re-renders of the controls never snap it back under the thumb.
+ */
+const Joystick = memo(function Joystick() {
     const zoneRef = useRef<HTMLDivElement | null>(null);
     const baseRef = useRef<HTMLDivElement | null>(null);
     const knobRef = useRef<HTMLDivElement | null>(null);
@@ -38,13 +44,34 @@ function Joystick() {
         place(zone.clientWidth * 0.45, zone.clientHeight * 0.6, 0, 0, false);
     };
 
+    const release = useCallback(() => {
+        origin.current = null;
+        input.setJoystick(0, 0);
+        rest();
+    }, []);
+
     const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-        if (origin.current) return;
+        // a second finger while the first still steers is ignored, but a stale
+        // origin (its lift never arrived) must not lock the stick: take over
+        const o = origin.current;
+        if (o && o.id === e.pointerId) return;
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
+        if (o) {
+            try {
+                if (e.currentTarget.hasPointerCapture(o.id)) return;
+            } catch {
+                // the old pointer is gone: take over below
+            }
+        }
         origin.current = { x, y, id: e.pointerId };
-        e.currentTarget.setPointerCapture(e.pointerId);
+        input.setJoystick(0, 0);
+        try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+            // capture can fail if the pointer already ended; the window listeners below still release it
+        }
         place(x, y, 0, 0, true);
     };
 
@@ -64,25 +91,52 @@ function Joystick() {
         place(o.x, o.y, dx, dy, true);
     };
 
-    const onUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const onUp = (e: { pointerId: number }) => {
         const o = origin.current;
         if (!o || o.id !== e.pointerId) return;
-        origin.current = null;
-        input.setJoystick(0, 0);
-        rest();
+        release();
     };
+
+    // safety net: a lift or cancel anywhere on the page, or the app losing focus, lets go
+    useEffect(() => {
+        const up = (e: PointerEvent) => onUp(e);
+        const lost = () => release();
+        const hidden = () => {
+            if (document.visibilityState !== 'visible') {
+                release();
+                input.reset();
+            }
+        };
+        window.addEventListener('pointerup', up);
+        window.addEventListener('pointercancel', up);
+        window.addEventListener('blur', lost);
+        document.addEventListener('visibilitychange', hidden);
+        return () => {
+            window.removeEventListener('pointerup', up);
+            window.removeEventListener('pointercancel', up);
+            window.removeEventListener('blur', lost);
+            document.removeEventListener('visibilitychange', hidden);
+            input.setJoystick(0, 0);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const zoneCallback = useCallback((el: HTMLDivElement | null) => {
+        zoneRef.current = el;
+        if (el) requestAnimationFrame(rest);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div
-            ref={(el) => {
-                zoneRef.current = el;
-                if (el) requestAnimationFrame(rest);
-            }}
-            className="pointer-events-auto absolute bottom-0 left-0 h-full w-1/2 touch-none"
+            ref={zoneCallback}
+            className="pointer-events-auto absolute bottom-0 left-0 h-full w-1/2 touch-none select-none"
             onPointerDown={onDown}
             onPointerMove={onMove}
             onPointerUp={onUp}
             onPointerCancel={onUp}
+            onLostPointerCapture={onUp}
+            onContextMenu={(e) => e.preventDefault()}
         >
             <div
                 ref={baseRef}
@@ -97,7 +151,7 @@ function Joystick() {
             </div>
         </div>
     );
-}
+});
 
 interface ButtonProps {
     action: Action;
@@ -134,10 +188,16 @@ function ActionButton({ action, label, size, right, bottom, color, glow, cooldow
             }}
             onPointerDown={(e) => {
                 e.preventDefault();
+                try {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {
+                    // fine: pointerleave below still releases
+                }
                 input.press(action);
             }}
             onPointerUp={() => input.release(action)}
             onPointerCancel={() => input.release(action)}
+            onLostPointerCapture={() => input.release(action)}
             onPointerLeave={() => input.release(action)}
             onContextMenu={(e) => e.preventDefault()}
         >
