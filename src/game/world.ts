@@ -22,6 +22,7 @@ import { teamPower, type Rival } from '../sdk/pvp.ts';
 import { XP, boostsFor, type Boosts } from './progression.ts';
 import { addXp, unlockRealm } from '../sdk/progress.ts';
 import { Tutorial, type TutorialEvent } from './tutorial.ts';
+import { BOON_TUNING, applyBoon, boonDef, rollBoons, type BoonId } from './boons.ts';
 
 /** Each monster's pain voice, transformation voice and swing. */
 const HURT_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfHurt', vampire: 'vampHurt', stitched: 'stitchHurt' };
@@ -124,6 +125,15 @@ export class World {
     /** The player's stat points as multipliers (fixed for the run; points are spent between runs). */
     readonly boost: Boosts;
 
+    /** Portal boons taken this run (stacks), and the 3 on offer while a portal waits for a pick. */
+    private boons: Partial<Record<BoonId, number>> = {};
+    private boonChoice: BoonId[] | null = null;
+
+    /** Stacks of a boon this run (0 when not taken). */
+    boon(id: BoonId): number {
+        return this.boons[id] ?? 0;
+    }
+
     /** First-run tutorial before wave 1 (null otherwise). */
     tutorial: Tutorial | null = null;
 
@@ -159,7 +169,7 @@ export class World {
             this.tutorial.setKnight(k);
             store.patch({ tutorialSkip: false, tutorialRequested: false });
         }
-        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: this.tier() });
+        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: this.tier(), boonChoice: null, boonPick: null, boons: {} });
         if (this.startRealm > 0) {
             store.patch({ banner: this.realm.name, bannerSub: `${this.realm.sub} · starting at wave ${this.wave + 1}` });
             this.bannerTimer = PORTAL.banner;
@@ -336,6 +346,7 @@ export class World {
             if (d > p.r + h.r && Math.abs(wrapAngle(ang - p.facing)) > reach) continue;
             hits++;
             h.takeHit(dmg, s.poise, { angle: ang, knock: s.knock, breaker: finisher });
+            if (this.boon('bleed') > 0) h.applyBleed(BOON_TUNING.bleedDps * this.boon('bleed'), BOON_TUNING.bleedTime);
             this.fx.spray(h.x, h.y, ang, 1.2, C.spark, 8);
         }
         if (hits > 0 && tut) tut.event('hit', 1);
@@ -375,6 +386,8 @@ export class World {
         if (p.invuln > 0 || p.phasing) return 'immune';
 
         const hurtVoice = HURT_VOICE[p.kind()];
+        // Iron Hide boon
+        dmg = Math.max(1, Math.round(dmg * (1 - BOON_TUNING.iron) ** this.boon('iron')));
         p.takeHit(dmg, fromAngle);
         this.waveHurt = true;
         this.fx.sound('hit', { volume: 0.85 });
@@ -629,7 +642,7 @@ export class World {
 
     private perfectDodge(): void {
         const p = this.player;
-        this.witching = T.witching.duration;
+        this.witching = T.witching.duration + BOON_TUNING.echo * this.boon('echo');
         p.perfectCd = T.witching.cooldown;
         p.addEnergy(T.energy.perPerfect);
         this.fx.sound('witching');
@@ -903,6 +916,11 @@ export class World {
     /** Which monster came in; the view uses it for the entry flash. */
     onSwap(): void {
         this.tutorialEvent('swap');
+        // Tag Heal boon: the monster coming in
+        if (this.boon('tagheal') > 0) {
+            const p = this.player;
+            p.heal(p.maxHp(p.kind()) * BOON_TUNING.tagheal * this.boon('tagheal'));
+        }
         this.fx.sound('swap');
         this.fx.flash(0xffffff, 0.12);
         this.syncHud();
@@ -916,6 +934,11 @@ export class World {
 
     onHunterKilled(): void {
         this.kills++;
+        // Bloodthirst boon
+        if (this.boon('thirst') > 0) {
+            const p = this.player;
+            p.heal(p.maxHp(p.kind()) * BOON_TUNING.thirst * this.boon('thirst'));
+        }
         this.tutorialEvent('kill');
         if (this.mode === 'hunt') this.gainXp(this.tierXp(XP.kill));
         // three kills in two seconds: the announcer calls it
@@ -1226,10 +1249,15 @@ export class World {
         this.fx.sound('witching', { delay: 0.6 });
         this.fx.sound('bell', { delay: 1.4 });
         const nextName = next.name.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+        // a boon to pick before the portal lets anyone through
+        const offer = rollBoons(this.boons);
+        this.boonChoice = offer.length ? offer : null;
         store.patch({
             banner: 'A PORTAL OPENS',
             bannerSub: this.potion ? `A health potion lies by it. Step in to reach ${nextName}` : `Step in to reach ${nextName}`,
             portalOpen: true,
+            boonChoice: this.boonChoice,
+            boonPick: null,
         });
         this.bannerTimer = T.waves.bannerTime + 2;
     }
@@ -1239,8 +1267,28 @@ export class World {
         pt.t += dt;
         const p = this.player;
         if (this.potion && p.alive && Math.hypot(p.x - this.potion.x, p.y - this.potion.y) <= T.potion.radius + p.r) this.drinkPotion();
+        // the portal stays sealed until a boon is picked
+        if (this.boonChoice) {
+            const pick = store.get().boonPick;
+            if (pick && this.boonChoice.includes(pick)) this.takeBoon(pick);
+            return;
+        }
         if (!p.alive || pt.t < 0.8) return;
         if (Math.hypot(p.x - pt.x, p.y - pt.y) <= PORTAL.radius) this.enterRealm();
+    }
+
+    private takeBoon(id: BoonId): void {
+        this.boonChoice = null;
+        this.boons = { ...this.boons, [id]: this.boon(id) + 1 };
+        applyBoon(this, id);
+        const d = boonDef(id);
+        const p = this.player;
+        this.fx.text(p.x, p.y - 120, d.name.toUpperCase(), 0xfde68a, 40, 1.4);
+        this.fx.ring(p.x, p.y, p.r, 240, 0xfde68a, 12, 0.6);
+        this.fx.burst(p.x, p.y, 0xfde68a, 24, 440, 7, 0.6);
+        this.fx.sound('parry', { volume: 0.9 });
+        store.patch({ boonChoice: null, boonPick: null, boons: this.boons });
+        void import('../sdk/dailyHunt.ts').then((h) => h.telemetry('boon_pick', { boon: id, stacks: this.boon(id) })).catch(() => undefined);
     }
 
     /** Walk over the potion: every monster still standing heals a share of its max HP. */
@@ -1334,7 +1382,7 @@ export class World {
         this.fx.sound('vo_gameover', { delay: 0.9 });
         this.witching = 0;
         // Souls for skins: KOs, waves cleared (the last one was not), bosses
-        const souls = this.kills * SOULS.perKill + Math.max(0, this.wave - 1) * SOULS.perWave + this.bossKills * SOULS.perBoss;
+        const souls = Math.round((this.kills * SOULS.perKill + Math.max(0, this.wave - 1) * SOULS.perWave + this.bossKills * SOULS.perBoss) * (1 + BOON_TUNING.harvest * this.boon('harvest')));
         store.patch({ gameOver: true, finalWave: this.wave, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls });
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         // the RUN app's own Share button now sends this run as a challenge

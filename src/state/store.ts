@@ -123,6 +123,10 @@ export interface AppState {
     realmsUnlocked: number;
     /** Realm the next hunt starts in (0 = the Graveyard). Runs started past it are practice for boards and challenges. */
     startRealm: number;
+    /** Portal boons: the 3 on offer (null when no choice is open), the pick from the UI, and this run's stacks. */
+    boonChoice: import('../game/boons.ts').BoonId[] | null;
+    boonPick: import('../game/boons.ts').BoonId | null;
+    boons: Partial<Record<import('../game/boons.ts').BoonId, number>>;
     /** First-run tutorial prompt (null when not running). */
     tutorial: { step: number; total: number; text: string; note: string } | null;
     /** The tutorial was finished or skipped on this device. */
@@ -207,6 +211,9 @@ let state: AppState = {
     realmTier: 0,
     realmsUnlocked: 0,
     tutorial: null,
+    boonChoice: null,
+    boonPick: null,
+    boons: {},
     tutorialDone: false,
     tutorialRequested: false,
     tutorialSkip: false,

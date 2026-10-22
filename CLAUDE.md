@@ -15,6 +15,7 @@ The simulation is 2D and renderer-free (sim units, y down, 100 units = 1 m); thr
 - **fxTypes.ts**: the `Fx` interface the sim calls for effects, hitstop and shake.
 - **realms.ts**: the ten maps (size, solid obstacles, theme: floor pattern, border style, props, lights); world.ts opens a portal after each boss (50% with a health potion, `T.potion`, drawn by `view/potion3d.ts`) and moves the fight to the next realm. Props come from props.glb: Halloween Bits plus Dungeon Remastered pieces named `d_*` (`tools/prep-models.mjs`, packs cloned from github.com/KayKit-Game-Assets into `../game-assets`).
 - **tutorial.ts**: the first-run tutorial (scripted training knight via `Hunter.script` / `immortal`, 8 steps fed by `world.tutorialEvent`), shown by the HUD prompt; replay via `store.tutorialRequested`.
+- **boons.ts**: portal boons (pick 1 of 3 when a portal opens; `world.boon(id)` stacks, stat boons multiply `world.boost`).
 - **progression.ts**: player level (1 to 30), XP rewards, the five stats and their boosts (`world.boost`, fixed per run). Saving in `src/sdk/progress.ts`, screen in `src/ui/Upgrades.tsx`. Realms get harder by tier (`T.realmTier`).
 - **skins.ts**: cosmetic skin definitions and Souls rewards (shop logic in `src/sdk/skinShop.ts`, screen in `src/ui/SkinShop.tsx`, RUN shop items in `rundot/shop.config.json`).
 - **input.ts**: buffered actions shared by touch controls (`src/ui/Controls.tsx`) and keyboard (WASD, J claw, K dodge, L guard).

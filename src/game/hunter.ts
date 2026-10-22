@@ -29,6 +29,8 @@ export interface HitOptions {
     knock: number;
     /** Finishers, specials, counters, shocks: break a raised guard instead of being blocked. */
     breaker?: boolean;
+    /** Damage over time (bleed): ignores guards, no flinch, no poise damage. */
+    dot?: boolean;
 }
 
 /** Wave multipliers applied at spawn (see T.difficulty). */
@@ -123,6 +125,16 @@ export class Hunter {
     script: 'idle' | 'jab' | 'heavy' | null = null;
     /** Tutorial knight: hits leave it at 1 HP until the last step. */
     immortal = false;
+    /** Bleed (Serrated Claws boon): seconds left, damage per second, damage waiting to tick. */
+    private bleedT = 0;
+    private bleedDps = 0;
+    private bleedAcc = 0;
+
+    /** Serrated Claws: (re)start bleeding at `dps` for `time` seconds. */
+    applyBleed(dps: number, time: number): void {
+        this.bleedT = time;
+        this.bleedDps = Math.max(this.bleedDps * (this.bleedT > 0 ? 1 : 0), dps);
+    }
     /** The rival's special for its monster. */
     private special: EnemyAttackDef | null = null;
     /** Boss: seconds until the next Grave Leap is allowed. */
@@ -239,6 +251,16 @@ export class Hunter {
         this.voiceCd = Math.max(0, this.voiceCd - dt);
         if (this.state !== 'windup' || this.atk?.style !== 'leap') this.air = 0;
         if (this.sinceHit > T.hunter.poiseRegenDelay && this.state !== 'broken') this.poise = this.poiseMax;
+        if (this.bleedT > 0 && this.alive) {
+            this.bleedT -= dt;
+            this.bleedAcc += this.bleedDps * dt;
+            if (this.bleedAcc >= 4 || (this.bleedT <= 0 && this.bleedAcc > 0)) {
+                const d = this.bleedAcc;
+                this.bleedAcc = 0;
+                this.takeHit(d, 0, { angle: this.facing + Math.PI, knock: 0, dot: true });
+                if (!this.alive) return;
+            }
+        }
         if (this.state !== 'chase') this.retreating = false;
 
         const p = this.w.player;
@@ -495,7 +517,7 @@ export class Hunter {
             this.flashT = 0.05;
             return false;
         }
-        if (this.hitsGuard(opts.angle)) {
+        if (!opts.dot && this.hitsGuard(opts.angle)) {
             if (opts.breaker || this.guardBlocks + 1 >= T.hunter.guard.maxBlocks) {
                 this.guardBreak();
             } else {
@@ -523,10 +545,10 @@ export class Hunter {
         this.kvx += Math.cos(opts.angle) * opts.knock * ks;
         this.kvy += Math.sin(opts.angle) * opts.knock * ks;
         if (dmg > 0) {
-            this.w.fx.text(this.x, this.y, String(Math.round(dmg)), this.state === 'broken' ? C.counter : 0xffffff, 28, 0.6);
+            this.w.fx.text(this.x, this.y, String(Math.round(dmg)), opts.dot ? 0xf87171 : this.state === 'broken' ? C.counter : 0xffffff, opts.dot ? 22 : 28, 0.6);
             // a spurt of blood out the far side, bigger for heavier hits
-            if (dmg >= T.gore.minDamage) this.w.fx.blood(this.x, this.y, opts.angle, Math.min(T.gore.maxAmount, dmg / T.gore.damagePerUnit));
-            this.lastHitAngle = opts.angle;
+            if (dmg >= T.gore.minDamage || opts.dot) this.w.fx.blood(this.x, this.y, opts.angle, opts.dot ? 0.4 : Math.min(T.gore.maxAmount, dmg / T.gore.damagePerUnit));
+            if (!opts.dot) this.lastHitAngle = opts.angle;
         }
 
         if (this.hp <= 0) {
@@ -543,6 +565,7 @@ export class Hunter {
             this.taggedOut = true;
             if (Math.random() < T.rival.tagOutChance && this.w.rivalTagOut(this)) return false;
         }
+        if (opts.dot) return false;
         // a grunt on some hits, never a chorus
         if (dmg > 0 && this.voiceCd <= 0 && Math.random() < 0.45) {
             this.voiceCd = 0.8;

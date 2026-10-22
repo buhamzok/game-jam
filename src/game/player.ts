@@ -11,6 +11,7 @@
  * team is dead. Hit resolution against enemies lives in World.
  */
 import { T, type MonsterDef, type PounceDef, type SwingDef, type MonsterKind } from './tuning.ts';
+import { BOON_TUNING } from './boons.ts';
 import { C } from './fxTypes.ts';
 import { input, type Action } from './input.ts';
 import type { World } from './world.ts';
@@ -328,7 +329,8 @@ export class Player {
         }
         this.dodgeOX = this.x;
         this.dodgeOY = this.y;
-        this.dodgeCd = T.dodge.duration + T.dodge.cooldown;
+        // Second Wind boon: the dodge recharges faster
+        this.dodgeCd = T.dodge.duration + T.dodge.cooldown * (1 - BOON_TUNING.wind) ** this.w.boon('wind');
         this.w.fx.sound('dodge');
         this.invuln = Math.max(this.invuln, T.dodge.duration);
         this.trailT = 0;

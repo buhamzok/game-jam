@@ -16,6 +16,55 @@ import { sdkReady } from '../sdk/runSdk.ts';
 import { telemetry } from '../sdk/dailyHunt.ts';
 import { sendChallenge } from '../sdk/challenge.ts';
 import { freePoints } from '../sdk/progress.ts';
+import { boonDef, type BoonId } from '../game/boons.ts';
+
+/** Portal boon pick: three cards; the portal opens once one is taken. Keys 1 2 3 pick too. */
+function BoonPicker({ choice, owned }: { choice: BoonId[]; owned: Partial<Record<BoonId, number>> }) {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            const i = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
+            if (i >= 0 && choice[i]) store.patch({ boonPick: choice[i] });
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [choice]);
+    return (
+        <div className="pointer-events-auto absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/60 px-5">
+            <p className="stay-pop text-center text-3xl font-black italic tracking-wider text-amber-300 drop-shadow-[0_3px_0_rgba(0,0,0,0.9)]">CHOOSE A BOON</p>
+            <p className="text-center text-xs font-bold text-white/70">It lasts the whole run. The portal opens once you pick.</p>
+            <div className="flex w-full max-w-[460px] flex-col gap-2.5 landscape:flex-row">
+                {choice.map((id, i) => {
+                    const d = boonDef(id);
+                    const have = owned[id] ?? 0;
+                    return (
+                        <button
+                            key={id}
+                            type="button"
+                            className="stay-pop flex flex-1 items-center gap-3 rounded-2xl bg-black/75 p-3 text-left ring-2 transition-transform active:scale-95 landscape:flex-col landscape:text-center"
+                            style={{ boxShadow: `inset 0 0 0 2px ${d.color}aa`, animationDelay: `${i * 0.08}s` }}
+                            onClick={() => {
+                                audio.play('click');
+                                store.patch({ boonPick: id });
+                            }}
+                        >
+                            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl" style={{ background: `${d.color}33` }}>
+                                {d.icon}
+                            </span>
+                            <span className="min-w-0">
+                                <span className="block text-base font-black text-white">
+                                    {d.name}
+                                    {have > 0 && <span className="ml-1.5 text-xs text-amber-300">x{have + 1}</span>}
+                                </span>
+                                <span className="block text-xs font-bold text-white/70">{d.desc}</span>
+                            </span>
+                            <span className="ml-auto hidden text-[10px] font-black text-white/40 landscape:ml-0 landscape:block">{i + 1}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 import portraitWerewolf from '../assets/portrait-werewolf.png';
 import portraitVampire from '../assets/portrait-vampire.png';
 import portraitStitched from '../assets/portrait-stitched.png';
@@ -219,6 +268,8 @@ export default function Hud() {
     const level = useStore((s) => s.level);
     const startRealm = useStore((s) => s.startRealm);
     const tutorial = useStore((s) => s.tutorial);
+    const boonChoice = useStore((s) => s.boonChoice);
+    const boons = useStore((s) => s.boons);
     const xpEarned = useStore((s) => s.xpEarned);
     const levelsGained = useStore((s) => s.levelsGained);
     const points = useStore((s) => freePoints(s));
@@ -263,7 +314,17 @@ export default function Hud() {
                             KOs {kills}
                         </span>
                     </div>
-                    {portalOpen && <div className="animate-pulse text-center text-[10px] font-black tracking-[0.2em] text-violet-300">{'\u2728'} PORTAL OPEN: STEP IN</div>}
+                    {portalOpen && <div className="animate-pulse text-center text-[10px] font-black tracking-[0.2em] text-violet-300">{'\u2728'} PORTAL OPEN</div>}
+                    {Object.keys(boons).length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                            {(Object.entries(boons) as [BoonId, number][]).map(([id, n]) => (
+                                <span key={id} title={boonDef(id).name} className="rounded-md px-1 text-[11px] font-black text-white" style={{ background: `${boonDef(id).color}44` }}>
+                                    {boonDef(id).icon}
+                                    {n > 1 ? <span className="ml-0.5 text-[9px]">x{n}</span> : null}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                     {challenge && (
                         <div className={`text-center text-[10px] font-black tracking-[0.15em] tabular-nums ${challengeBeaten ? 'text-emerald-300' : 'text-amber-300'}`}>
                             {challengeBeaten ? `\u2713 BEAT ${challenge.from.toUpperCase()}'S WAVE ${challenge.wave}` : `\u2694 BEAT ${challenge.from.toUpperCase()}: PASS WAVE ${challenge.wave}`}
@@ -319,6 +380,8 @@ export default function Hud() {
                     </p>
                 </div>
             )}
+
+            {boonChoice && !gameOver && <BoonPicker choice={boonChoice} owned={boons} />}
 
             {tutorial && !gameOver && (
                 <div className="absolute inset-x-0 top-[17%] flex justify-center px-4">
