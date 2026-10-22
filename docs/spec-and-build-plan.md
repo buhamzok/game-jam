@@ -12,7 +12,9 @@ Still to build: the shield knight and a boss, techniques (E), a Daily Hunt leade
 
 **Oct 21:** the boss fight, the fence fix, the friend challenge, the skin shop and realms (a portal after every boss) are built and tested in the browser on the GitHub branch `claude/fight-polish` ([buhamzok/game-jam](https://github.com/buhamzok/game-jam)). None of it is deployed yet.
 
-**Next session: `claude/fight-polish` is merged into `main` (Oct 21): `git pull` on the PC, play it on a phone and a PC (boss phase 2, guards, the SPECIAL button, portals, levels and upgrades, blood, the skin shop and the PVP Arena in the playground), then `npm run build` and `rundot deploy` (owner's call). The deploy also uploads `rundot/shop.config.json`, `rundot/simulation/pvp-system.json` and `rundot/leaderboard.config.json`. Post the trailer (`trailer/out/`) with the vote link.**
+**Oct 22:** all eleven feature-push items are built and the first ten are tested in the browser. Settings toggles and the new cosmetics (three skins, four portal colors, a victory pose) passed a live browser test, and `npm run build` passes. Deployed as v1.18.0, private, from commit `d28d019`; the deploy also uploaded the shop, PVP and leaderboard configs.
+
+**Next session: play v1.18.0 on a phone and a PC from the share link (settings toggles, portal colors, the victory pose, bosses, PVP), then re-shoot and post the trailer (`trailer/out/`) with the vote link. Making the build public is the owner's call.**
 
 - Project folder: `D:\PROJECTS2\tag-team-terror` (GitHub: [buhamzok/game-jam](https://github.com/buhamzok/game-jam))
 - RUN game ID: `Zo8tRIGBpGhAGb0XCXoI` (public; builds 1.0.0 to 1.5.0; entered in the October Jam)
