@@ -20,7 +20,7 @@ import { REALMS, PORTAL, BLOOD_PIT, type RealmDef } from './realms.ts';
 import type { RivalSpec } from './hunter.ts';
 import { teamPower, type Rival } from '../sdk/pvp.ts';
 import { XP, boostsFor, type Boosts } from './progression.ts';
-import { addXp } from '../sdk/progress.ts';
+import { addXp, unlockRealm } from '../sdk/progress.ts';
 
 /** Each monster's pain voice, transformation voice and swing. */
 const HURT_VOICE: Record<MonsterKind, SfxName> = { werewolf: 'wolfHurt', vampire: 'vampHurt', stitched: 'stitchHurt' };
@@ -123,9 +123,20 @@ export class World {
     /** The player's stat points as multipliers (fixed for the run; points are spent between runs). */
     readonly boost: Boosts;
 
+    /** Realm this hunt started in (realm select). Runs started past the first realm do not count for best wave, the Daily Hunt or challenges. */
+    readonly startRealm: number = 0;
+
     constructor(readonly fx: Fx) {
         const s = store.get();
         this.boost = boostsFor(s.stats);
+        if (s.mode !== 'pvp' && s.startRealm > 0) {
+            // realm select: begin at the chosen realm's first wave, as hard as it would be on arrival
+            const r = Math.min(s.startRealm, s.realmsUnlocked, REALMS.length - 1);
+            this.startRealm = r;
+            this.realmIndex = r;
+            this.realm = REALMS[r];
+            this.wave = r * T.difficulty.bossEvery;
+        }
         this.mode = s.mode === 'pvp' && s.rival ? 'pvp' : 'hunt';
         if (this.mode === 'pvp') {
             this.realm = BLOOD_PIT;
@@ -136,7 +147,13 @@ export class World {
         }
         this.player = new Player(this);
         this.player.y = this.realm.arena.h * 0.22;
-        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: 0 });
+        store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: this.tier() });
+        if (this.startRealm > 0) {
+            store.patch({ banner: this.realm.name, bannerSub: `${this.realm.sub} · starting at wave ${this.wave + 1}` });
+            this.bannerTimer = PORTAL.banner;
+            // let the realm banner read before the first wave's
+            this.waveTimer = T.waves.delay + PORTAL.banner;
+        }
         if (this.mode === 'pvp') {
             const r = s.rival!;
             store.patch({ banner: `VS ${r.name.toUpperCase()}`, bannerSub: r.bot ? 'A bot team (no rival found yet)' : `Their tag team, played by the AI` });
@@ -1116,9 +1133,9 @@ export class World {
         if (bossWave) this.spawnBoss(mods);
         for (const kind of this.roster()) this.spawnHunter(kind, mods);
         store.patch({ banner: bossWave ? `WAVE ${this.wave} - GRAVELORD` : `WAVE ${this.wave}`, bannerSub: this.bannerSubtitle() });
-        // a friend's challenge: reaching the wave after theirs beats it
+        // a friend's challenge: reaching the wave after theirs beats it (only on a run from the first realm)
         const ch = store.get().challenge;
-        if (ch && !store.get().challengeBeaten && this.wave > ch.wave) {
+        if (ch && this.startRealm === 0 && !store.get().challengeBeaten && this.wave > ch.wave) {
             store.patch({ challengeBeaten: true, bannerSub: `CHALLENGE BEATEN! You passed ${ch.from}` });
             this.fx.sound('bell', { delay: 0.5 });
             this.fx.flash(0xfde68a, 0.3);
@@ -1202,6 +1219,7 @@ export class World {
     /** Step through: new map, player at the near end, waves carry on after a beat. */
     private enterRealm(): void {
         this.realmIndex++;
+        unlockRealm(this.realmIndex % REALMS.length === 0 ? REALMS.length - 1 : Math.min(this.realmIndex, REALMS.length - 1));
         // finishing a realm pays XP by how deep it was
         this.gainXp(XP.realm * this.realmIndex);
         this.realm = REALMS[this.realmIndex % REALMS.length];
@@ -1278,11 +1296,19 @@ export class World {
         store.patch({ gameOver: true, finalWave: this.wave, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls });
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         // the RUN app's own Share button now sends this run as a challenge
-        void import('../sdk/challenge.ts').then((c) => c.setChallengeIntent(this.wave, this.kills)).catch(() => undefined);
+        // a run from a later realm (realm select) is practice: no challenge, best wave or Daily Hunt score
+        const counts = this.startRealm === 0;
+        if (counts) void import('../sdk/challenge.ts').then((c) => c.setChallengeIntent(this.wave, this.kills)).catch(() => undefined);
         // Daily Hunt: remember the run and (when it beat the old best) score it
         // on the RUN daily board. Never blocks or throws into the sim.
         void import('../sdk/dailyHunt.ts')
-            .then((h) => Promise.all([h.submitRun(this.wave, this.clock, this.kills), h.telemetry('run_end', { wave: this.wave, kills: this.kills, seconds: Math.round(this.clock), realm: this.realm.id }), h.fetchDailyBoard()]))
+            .then((h) =>
+                Promise.all([
+                    counts ? h.submitRun(this.wave, this.clock, this.kills) : Promise.resolve(),
+                    h.telemetry('run_end', { wave: this.wave, kills: this.kills, seconds: Math.round(this.clock), realm: this.realm.id, start: this.startRealm }),
+                    h.fetchDailyBoard(),
+                ]),
+            )
             // then save the team for PVP rivals (best wave is up to date by now)
             .then(() => import('../sdk/pvp.ts'))
             .then((p) => p.snapshotTeam())

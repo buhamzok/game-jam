@@ -110,10 +110,11 @@ export class MenuScene {
         // slow drift; on portrait the lineup sits in the upper middle, above the buttons
         // landscape: aim right of the lineup so it sits left of the menu panel
         const sway = Math.sin(this.t * 0.25) * 0.4;
-        const dist = this.portrait ? 8.6 : 8.0;
+        // portrait: a little further back and aimed low, so the lineup sits between the title and the menu buttons
+        const dist = this.portrait ? 9.6 : 8.0;
         const aimX = this.portrait ? 0 : 1.5;
-        this.camera.position.set(aimX * 0.6 + sway, this.portrait ? 1.0 : 1.5, LINEUP_Z + dist);
-        this.camera.lookAt(aimX + sway * 0.3, this.portrait ? 0.45 : 1.0, LINEUP_Z);
+        this.camera.position.set(aimX * 0.6 + sway, this.portrait ? 1.3 : 1.5, LINEUP_Z + dist);
+        this.camera.lookAt(aimX + sway * 0.3, this.portrait ? -0.35 : 1.0, LINEUP_Z);
         this.renderer.render(this.scene, this.camera);
     }
 

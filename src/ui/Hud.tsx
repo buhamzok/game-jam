@@ -217,6 +217,7 @@ export default function Hud() {
     const portalOpen = useStore((s) => s.portalOpen);
     const souls = useStore((s) => s.souls);
     const level = useStore((s) => s.level);
+    const startRealm = useStore((s) => s.startRealm);
     const xpEarned = useStore((s) => s.xpEarned);
     const levelsGained = useStore((s) => s.levelsGained);
     const points = useStore((s) => freePoints(s));
@@ -378,7 +379,7 @@ export default function Hud() {
                     <p className="text-lg font-bold text-white/80 tabular-nums">
                         Wave {finalWave} · {finalKills} KOs
                     </p>
-                    {finalWave > bestWave && (
+                    {finalWave > bestWave && startRealm === 0 && (
                         <p className="text-sm font-black tracking-wide text-amber-300">NEW PERSONAL BEST!</p>
                     )}
                     {challenge && (

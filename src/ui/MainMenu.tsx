@@ -10,10 +10,44 @@ import { audio } from '../game/audio.ts';
 import { fetchDailyBoard } from '../sdk/dailyHunt.ts';
 import { freePoints } from '../sdk/progress.ts';
 import { LevelBar } from './Upgrades.tsx';
+import { REALMS } from '../game/realms.ts';
+
+const title = (name: string) => name.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+
+/** Realm select: start from any realm already reached. Hidden until a second realm is unlocked. */
+function RealmPicker() {
+    const unlocked = useStore((s) => s.realmsUnlocked);
+    const start = useStore((s) => Math.min(s.startRealm, s.realmsUnlocked));
+    if (unlocked <= 0) return null;
+    const step = (d: number) => {
+        audio.play('click');
+        store.patch({ startRealm: (start + d + unlocked + 1) % (unlocked + 1) });
+    };
+    const realm = REALMS[start];
+    return (
+        <div className="flex items-center gap-2 rounded-xl bg-black/55 px-2 py-1.5 ring-1 ring-violet-400/40 backdrop-blur-sm">
+            <button type="button" aria-label="Previous realm" className="h-9 w-9 shrink-0 rounded-lg bg-white/10 text-lg font-black text-white active:scale-90" onClick={() => step(-1)}>
+                {'\u25C0'}
+            </button>
+            <div className="min-w-0 flex-1 text-center">
+                <p className="text-[10px] font-black tracking-[0.25em] text-violet-300">
+                    REALM {start + 1} / {REALMS.length} · {unlocked + 1} UNLOCKED
+                </p>
+                <p className="truncate text-sm font-black text-white">{title(realm.name)}</p>
+                <p className="text-[10px] font-bold text-white/50">{start === 0 ? 'Full run: counts for the Daily Hunt' : `Starts at wave ${start * 5 + 1} · practice, no daily score`}</p>
+            </div>
+            <button type="button" aria-label="Next realm" className="h-9 w-9 shrink-0 rounded-lg bg-white/10 text-lg font-black text-white active:scale-90" onClick={() => step(1)}>
+                {'\u25B6'}
+            </button>
+        </div>
+    );
+}
 
 function fight() {
     audio.play('click');
-    store.patch({ phase: 'playing', mode: 'hunt', gameOver: false });
+    // a friend's challenge is always a full run from the first realm
+    const s = store.get();
+    store.patch({ phase: 'playing', mode: 'hunt', gameOver: false, startRealm: s.challenge ? 0 : Math.min(s.startRealm, s.realmsUnlocked) });
 }
 
 /** The 3D lineup behind the menu; it falls back to the plain night color if WebGL fails. */
@@ -157,6 +191,8 @@ export default function MainMenu() {
                     >
                         {challenge ? 'ACCEPT' : 'FIGHT'}
                     </button>
+
+                    {!challenge && <RealmPicker />}
 
                     <button
                         type="button"

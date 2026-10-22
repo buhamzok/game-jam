@@ -119,6 +119,10 @@ export interface AppState {
     /** XP and levels gained this run (end screen); reset when a run starts. */
     xpEarned: number;
     levelsGained: number;
+    /** Furthest realm index reached on this device (0..9); realms up to it can be picked on the menu. */
+    realmsUnlocked: number;
+    /** Realm the next hunt starts in (0 = the Graveyard). Runs started past it are practice for boards and challenges. */
+    startRealm: number;
     /** Current realm danger tier (0 for the first realm). */
     realmTier: number;
     /** Current realm (map) name, and whether its exit portal is open. */
@@ -193,6 +197,8 @@ let state: AppState = {
     xpEarned: 0,
     levelsGained: 0,
     realmTier: 0,
+    realmsUnlocked: 0,
+    startRealm: 0,
     mode: 'hunt',
     rival: null,
     pvpResult: null,

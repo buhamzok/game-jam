@@ -118,7 +118,7 @@ Tested the same way (browser scenarios, a bot through two bosses and two portals
 
 Agreed with the owner on Oct 22, built in this order. Each box is ticked when the feature is built and tested.
 
-- [ ] 1. **Realm select.** Start a run from any realm already reached, so players and judges see more than the first two maps.
+- [x] 1. **Realm select.** Start a run from any realm already reached, so players and judges see more than the first two maps. *Built:* a picker under FIGHT once a second realm is reached (saved as `ttt.realm`); a run from realm N starts at wave 5N+1 with that realm's danger tier. Runs from a later realm still pay XP, Souls and unlocks, but do not count for best wave, the Daily Hunt or friend challenges.
 - [ ] 2. **First-run tutorial.** A short guided first wave: dodge red, guard purple to counter, swap monsters, transform.
 - [ ] 3. **Portal boons.** Before each portal, pick 1 of 3 run-only powers (for example "claws bleed", "+1 dodge", "swaps heal").
 - [ ] 4. **More bosses.** New bosses or Gravelord variants for later realms, so every fifth wave is not the same fight.
