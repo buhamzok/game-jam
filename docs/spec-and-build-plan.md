@@ -114,6 +114,22 @@ Tested the same way (browser scenarios, a bot through two bosses and two portals
 | Health potion | Each portal has a 50% chance of a red potion a few steps in front of it; walking over it heals every monster still standing by 30% of its max HP. Left behind if you step through first. `T.potion`, `view/potion3d.ts`. |
 | Thumbnail | New 512 x 512 tile: the Full Moon wolf (red eyes), the Vampire and the Stitched in the graveyard under a blood moon, with the trailer's title type. Rebuild: `?tool=thumb` (dev only) plus the `Thumbnail` composition in `trailer/`. |
 
+## Feature push (Oct 22): to be implemented
+
+Agreed with the owner on Oct 22, built in this order. Each box is ticked when the feature is built and tested.
+
+- [ ] 1. **Realm select.** Start a run from any realm already reached, so players and judges see more than the first two maps.
+- [ ] 2. **First-run tutorial.** A short guided first wave: dodge red, guard purple to counter, swap monsters, transform.
+- [ ] 3. **Portal boons.** Before each portal, pick 1 of 3 run-only powers (for example "claws bleed", "+1 dodge", "swaps heal").
+- [ ] 4. **More bosses.** New bosses or Gravelord variants for later realms, so every fifth wave is not the same fight.
+- [ ] 5. **Realm-specific enemies.** The shield knight (blocks from the front: flank it or break its guard) and other realm twists.
+- [ ] 6. **Combo meter and grades.** A hit counter with S/A/B grades during fights and a run summary at the end.
+- [ ] 7. **Daily rewards and quests.** Daily quests that pay Souls (for example "Kill 30 knights") and a streak bonus.
+- [ ] 8. **PVP rank ladder.** Wins move a player up tiers (Bronze to Gravelord), with a board.
+- [ ] 9. **More cosmetics.** More skins, portal colors and victory poses; cosmetic only, so PVP stays fair.
+- [ ] 10. **Settings toggles.** Gore on or off, damage numbers on or off, and a low-graphics mode for weak phones.
+- [ ] 11. **Re-shoot the trailer.** Show blood, levels, potions and the new realms before the vote push.
+
 ## Architecture
 
 ![Code architecture: the simulation decides the fight; three.js only draws it](architecture.png)
