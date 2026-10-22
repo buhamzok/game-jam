@@ -25,7 +25,7 @@ The simulation is 2D and renderer-free (sim units, y down, 100 units = 1 m); thr
 - Title screen: `view/menuScene.ts` renders the 3D lineup behind `ui/MainMenu.tsx`. Full Moon extra (red eyes): `view/wolfForm.ts`.
 - Gore: hits on hunters spray blood droplets that leave fading ground splats (`Fx.blood`, `T.gore`, `GORE` in fx3d.ts).
 - Game tile: `?tool=thumb` (dev only, `src/dev/thumbTool.ts`) renders the 3D art; `trailer/` adds the title (`Thumbnail` composition). Steps in trailer/README.md.
-- Trailer: `trailer/` (Remotion; see its README). Video skills are installed in `.claude/skills/` (remotion-*, explainer-*, sound-effects, motion-broll).
+- Trailer: `trailer/` (Remotion; see its README). Video skills are installed in `.claude/skills/` (remotion-*, explainer-*, sound-effects, motion-broll), plus the caveman terse-reply skills (/caveman, /caveman ultra, /caveman wenyan; sources in `.claude/skills/SOURCES.md`).
 - `NO_PLAYGROUND=1 npm run dev` skips the RUN sign-in for headless browser tests; `?beat=7&from=Jo` fakes a challenge.
 - Dev only: `window.__ttt = { view, world, input, audio }`, `window.__store`. With the browser pane hidden, rAF stops, so test by calling `view.step(1/60)` from the console.
 
