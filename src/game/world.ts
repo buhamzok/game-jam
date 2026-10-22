@@ -1025,6 +1025,7 @@ export class World {
     private bodyR(h: Hunter): number {
         const B = T.bodies;
         if (h.def.boss) return T.bosses[h.bossType].body;
+        if (h.kind === 'skeleton') return T.skeleton.body;
         if (h.rival) return B.monster[h.rival.monster];
         return B.hunter;
     }
@@ -1148,17 +1149,32 @@ export class World {
         const extra = Math.min(T.realmTier.extraMax, this.tier() * T.realmTier.hunters);
         let count = Math.min(T.waves.max + extra, T.waves.base + (w - 1) * T.waves.perWave + extra);
         if (isBossWave(w) && count > 3) count = 3;
-        const mages = w >= d.mageFrom ? Math.min(2, 1 + Math.floor((w - d.mageFrom) / 2)) : 0;
-        const rogues = w >= d.rogueFrom ? Math.min(2, 1 + Math.floor((w - d.rogueFrom) / 2)) : 0;
+        // each realm brings its own mix (RealmDef.twist): extra ranged, shield knights, skeleton packs
+        const tw = this.realm.twist ?? {};
+        const mages = w >= d.mageFrom ? Math.min(2 + (tw.mages ?? 0), 1 + Math.floor((w - d.mageFrom) / 2) + (tw.mages ?? 0)) : 0;
+        const rogues = w >= d.rogueFrom ? Math.min(2 + (tw.rogues ?? 0), 1 + Math.floor((w - d.rogueFrom) / 2) + (tw.rogues ?? 0)) : 0;
         const kinds: HunterKind[] = [];
-        for (let i = 0; i < mages; i++) kinds.push('mage');
-        for (let i = 0; i < rogues; i++) kinds.push('rogue');
-        while (kinds.length < count) kinds.push(w >= d.barbarianFrom && Math.random() < 0.4 ? 'barbarian' : 'knight');
+        for (let i = 0; i < mages && kinds.length < count; i++) kinds.push('mage');
+        for (let i = 0; i < rogues && kinds.length < count; i++) kinds.push('rogue');
+        while (kinds.length < count) {
+            const melee: HunterKind = w >= d.barbarianFrom && Math.random() < 0.4 ? 'barbarian' : 'knight';
+            kinds.push(melee === 'knight' && Math.random() < (tw.shield ?? 0) ? 'shield' : melee);
+        }
+        // skeletons come on top of the cap (they are frail); fewer on a boss wave
+        const skel = isBossWave(w) ? Math.floor((tw.skeletons ?? 0) / 2) : (tw.skeletons ?? 0);
+        for (let i = 0; i < skel; i++) kinds.push('skeleton');
         return kinds;
     }
 
-    private bannerSubtitle(): string {
+    /** Hunter kinds this run has already met (a new one gets a tip on the wave banner). */
+    private metKinds = new Set<HunterKind>();
+
+    private bannerSubtitle(kinds: HunterKind[] = []): string {
         const d = T.difficulty;
+        const fresh = kinds.find((k) => (k === 'shield' || k === 'skeleton') && !this.metKinds.has(k));
+        for (const k of kinds) this.metKinds.add(k);
+        if (fresh === 'shield' && !isBossWave(this.wave)) return 'Shield knights: hit them from behind, or break the shield with a finisher';
+        if (fresh === 'skeleton' && !isBossWave(this.wave)) return 'Skeletons: frail, fast, and never alone';
         if (isBossWave(this.wave)) {
             const tip = { gravelord: '', captain: ': dodge his charge', colossus: ': keep moving when the bones fall' }[this.realm.boss];
             return `${T.bosses[this.realm.boss].name} RISES${tip}`;
@@ -1217,8 +1233,9 @@ export class World {
         const mods = this.waveMods();
         const bossWave = isBossWave(this.wave);
         if (bossWave) this.spawnBoss(mods);
-        for (const kind of this.roster()) this.spawnHunter(kind, mods);
-        store.patch({ banner: bossWave ? `WAVE ${this.wave} - ${T.bosses[this.realm.boss].short}` : `WAVE ${this.wave}`, bannerSub: this.bannerSubtitle() });
+        const roster = this.roster();
+        for (const kind of roster) this.spawnHunter(kind, mods);
+        store.patch({ banner: bossWave ? `WAVE ${this.wave} - ${T.bosses[this.realm.boss].short}` : `WAVE ${this.wave}`, bannerSub: this.bannerSubtitle(roster) });
         // a friend's challenge: reaching the wave after theirs beats it (only on a run from the first realm)
         const ch = store.get().challenge;
         if (ch && this.startRealm === 0 && !store.get().challengeBeaten && this.wave > ch.wave) {
@@ -1390,7 +1407,7 @@ export class World {
             if (Math.hypot(x - p.x, y - p.y) >= T.waves.minSpawnDistance && this.clearOfObstacles(x, y, T.hunter.radius)) break;
         }
         this.hunters.push(new Hunter(this, x, y, kind, mods));
-        this.fx.ring(x, y, 10, 70, kind === 'rogue' ? C.bolt : kind === 'mage' ? C.heavy : C.jab, 6, 0.5);
+        this.fx.ring(x, y, 10, 70, kind === 'rogue' ? C.bolt : kind === 'mage' ? C.heavy : kind === 'shield' ? 0x60a5fa : kind === 'skeleton' ? 0xe7e5e4 : C.jab, 6, 0.5);
     }
 
     private gameOver(): void {

@@ -64,6 +64,12 @@ export interface RealmDef {
     name: string;
     /** The boss at the end of this realm (every 5th wave). */
     boss: import('./tuning.ts').BossType;
+    /**
+     * Who else shows up here: `shield` = share of knights replaced by shield
+     * knights; `skeletons` = extra skeleton minions per wave; `rogues` and
+     * `mages` = extra ranged hunters (once they have appeared in the run).
+     */
+    twist?: { shield?: number; skeletons?: number; rogues?: number; mages?: number };
     /** Banner subtitle when arriving. */
     sub: string;
     arena: { w: number; h: number };
@@ -99,6 +105,7 @@ const GRAVEYARD: RealmDef = {
 
 const HOLLOW_WOODS: RealmDef = {
     id: 'woods',
+    twist: { rogues: 1 },
     boss: 'captain',
     name: 'THE HOLLOW WOODS',
     sub: 'Dead trees block the way: use them as cover from bolts',
@@ -132,6 +139,7 @@ const HOLLOW_WOODS: RealmDef = {
 
 const PUMPKIN_PATCH: RealmDef = {
     id: 'patch',
+    twist: { shield: 0.25 },
     boss: 'colossus',
     name: 'THE PUMPKIN PATCH',
     sub: 'Lantern light, and the hunters are faster now',
@@ -163,6 +171,7 @@ const PUMPKIN_PATCH: RealmDef = {
 
 const BLOOD_MOON_CRYPT: RealmDef = {
     id: 'crypt',
+    twist: { shield: 0.3, skeletons: 2 },
     boss: 'gravelord',
     name: 'THE BLOOD MOON CRYPT',
     sub: 'The moon bleeds and the dead stir',
@@ -195,6 +204,7 @@ const BLOOD_MOON_CRYPT: RealmDef = {
 
 const AUTUMN_HOLLOW: RealmDef = {
     id: 'autumn',
+    twist: { shield: 0.3, rogues: 1 },
     boss: 'captain',
     name: 'THE AUTUMN HOLLOW',
     sub: 'Pines close in: fight between the trunks',
@@ -229,6 +239,7 @@ const AUTUMN_HOLLOW: RealmDef = {
 
 const SHRINE_ROAD: RealmDef = {
     id: 'shrines',
+    twist: { shield: 0.3, mages: 1 },
     boss: 'colossus',
     name: 'THE SHRINE ROAD',
     sub: 'A long road of skulls: the hunters come from both ends',
@@ -264,6 +275,7 @@ const SHRINE_ROAD: RealmDef = {
 
 const OSSUARY: RealmDef = {
     id: 'ossuary',
+    twist: { skeletons: 4 },
     boss: 'colossus',
     name: 'THE OSSUARY',
     sub: 'Bones of every hunter who came before',
@@ -298,6 +310,7 @@ const OSSUARY: RealmDef = {
 
 const DUNGEON_DEPTHS: RealmDef = {
     id: 'depths',
+    twist: { shield: 0.45, skeletons: 1 },
     boss: 'gravelord',
     name: 'THE DUNGEON DEPTHS',
     sub: 'Torchlight and stone: the pillars stop bolts',
@@ -333,6 +346,7 @@ const DUNGEON_DEPTHS: RealmDef = {
 
 const HUNTERS_KEEP: RealmDef = {
     id: 'keep',
+    twist: { shield: 0.45, rogues: 1 },
     boss: 'captain',
     name: "THE HUNTERS' KEEP",
     sub: 'Their own hall: they will not hold back',
@@ -367,6 +381,7 @@ const HUNTERS_KEEP: RealmDef = {
 
 const WITCHING_GATE: RealmDef = {
     id: 'gate',
+    twist: { shield: 0.35, skeletons: 2, mages: 1 },
     boss: 'gravelord',
     name: 'THE WITCHING GATE',
     sub: 'The last stand before the hunt starts over',

@@ -501,6 +501,23 @@ const HUNTER_ANIMS: Record<HunterKind, HunterAnims> = {
         jabImpact: 0,
         heavyImpact: 0,
     },
+    shield: {
+        idle: { clip: 'Blocking', loop: true },
+        // walks in behind the shield
+        run: { clip: 'Walking_B', loop: true, speed: 1.5 },
+        jab: { clip: '1H_Melee_Attack_Stab', fade: 0.08 },
+        heavy: { clip: '1H_Melee_Attack_Chop', fade: 0.08 },
+        jabImpact: 0.42,
+        heavyImpact: 0.45,
+    },
+    skeleton: {
+        idle: { clip: 'Idle_Combat', loop: true },
+        run: { clip: 'Running_A', loop: true, speed: 1.3 },
+        jab: { clip: 'Unarmed_Melee_Attack_Punch_A', fade: 0.06 },
+        heavy: { clip: 'Unarmed_Melee_Attack_Punch_B', fade: 0.06 },
+        jabImpact: 0.45,
+        heavyImpact: 0.45,
+    },
     mage: {
         idle: { clip: 'Idle', loop: true },
         run: { clip: 'Running_A', loop: true },
@@ -533,6 +550,14 @@ const COMMON_OVERRIDE: Partial<Record<HunterKind, Partial<{ spawn: AnimSpec; fli
         broken: { clip: 'hit', speed: 0.5, fade: 0.05 },
         dead: { clip: 'dead', speed: 1.0, fade: 0.08 },
         guard: { clip: 'guard', loop: true, fade: 0.08 },
+    },
+    shield: {
+        guard: { clip: 'Blocking', loop: true, fade: 0.06 },
+    },
+    skeleton: {
+        spawn: { clip: 'Skeletons_Awaken_Floor', loop: false, speed: 2.2 },
+        broken: { clip: 'Hit_B', speed: 0.6, fade: 0.05 },
+        guard: { clip: 'Block_Hit', speed: 1.3, fade: 0.06 },
     },
     boss: {
         guard: { clip: 'guard', loop: true, fade: 0.1 },
@@ -755,8 +780,8 @@ export class HunterView {
 
         this.updateTelegraph(h);
 
-        // raised guard: a blue arc in front, fading in fast
-        const on = h.state === 'guard';
+        // raised guard (or a shield knight's shield): a blue arc in front, fading in fast
+        const on = h.state === 'guard' || h.shieldUp;
         this.shieldMat.opacity += ((on ? 0.75 : 0) - this.shieldMat.opacity) * Math.min(1, realDt * 14);
         this.shield.visible = this.shieldMat.opacity > 0.02;
         if (this.shield.visible) {

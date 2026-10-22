@@ -172,7 +172,7 @@ export class Hunter {
         this.poiseMax = this.def.poise * (1 + (mods.hp - 1) * 0.5);
         this.poise = this.poiseMax;
         this.speed = this.def.speed * mods.speed * (per ? per.speed : 1);
-        this.jab = scaleAttack(this.def.boss ? T.boss.sweep : rival ? T.rival.jab : T.hunter.jab, mods);
+        this.jab = scaleAttack(this.def.boss ? T.boss.sweep : rival ? T.rival.jab : kind === 'skeleton' ? T.skeleton.jab : T.hunter.jab, mods);
         this.heavy = scaleAttack(this.def.boss ? T.boss.smash : rival ? T.rival.heavy : T.hunter.heavy, mods);
         if (rival) this.special = scaleAttack(T.rival.specials[rival.monster], mods);
         this.shot = this.def.ranged ? scaleAttack(this.def.ranged.attack, mods) : null;
@@ -247,6 +247,8 @@ export class Hunter {
             const melee = Math.random() < T.rival.heavyChance ? this.heavy : this.jab;
             return dist <= melee.range ? melee : null;
         }
+        if (this.kind === 'skeleton') return this.jab;
+        if (this.def.shield) return Math.random() < T.shieldKnight.heavyChance ? this.heavy : this.jab;
         if (!this.def.boss) return Math.random() < T.hunter.heavyChance ? this.heavy : this.jab;
         if (this.bossType === 'captain') {
             // charges to close a gap or every few attacks; phase 2 mixes in the whirlwind
@@ -456,9 +458,14 @@ export class Hunter {
         this.kvy *= k;
     }
 
-    /** Can this hunter ever guard? Melee kinds, and the boss once enraged. */
+    /** Shield knight: the shield is up in front while it walks or recovers (not while striking or stunned). */
+    get shieldUp(): boolean {
+        return !!this.def.shield && (this.state === 'chase' || this.state === 'recover' || this.state === 'flinch');
+    }
+
+    /** Can this hunter ever guard? Melee kinds, and the boss once enraged. Skeletons and shield knights never raise a timed guard. */
     get canGuard(): boolean {
-        if (this.shot) return false;
+        if (this.shot || this.kind === 'skeleton' || this.def.shield) return false;
         return this.def.boss ? this.phase === 2 : true;
     }
 
@@ -483,14 +490,17 @@ export class Hunter {
 
     /** Is a hit pushing along `angle` coming at the raised guard's front? */
     private hitsGuard(angle: number): boolean {
-        if (this.state !== 'guard') return false;
+        const shield = this.shieldUp;
+        if (this.state !== 'guard' && !shield) return false;
         // the hit pushes along `angle`, so it comes from angle + PI
         const from = angle + Math.PI;
-        return Math.abs(wrapAngle(from - this.facing)) <= (T.hunter.guard.arcDeg / 2) * DEG;
+        const arc = shield ? T.shieldKnight.arcDeg : T.hunter.guard.arcDeg;
+        return Math.abs(wrapAngle(from - this.facing)) <= (arc / 2) * DEG;
     }
 
     private guardBreak(): void {
         this.atk = null;
+        this.guardBlocks = 0;
         this.enter('broken');
         this.w.fx.text(this.x, this.y - 50, 'GUARD BREAK', C.counter, 40, 0.9);
         this.w.fx.sound('guardBreak', { x: this.x });
@@ -574,7 +584,7 @@ export class Hunter {
             return false;
         }
         if (!opts.dot && this.hitsGuard(opts.angle)) {
-            if (opts.breaker || this.guardBlocks + 1 >= T.hunter.guard.maxBlocks) {
+            if (opts.breaker || this.guardBlocks + 1 >= (this.def.shield ? T.shieldKnight.maxBlocks : T.hunter.guard.maxBlocks)) {
                 this.guardBreak();
             } else {
                 // blocked: no damage, a little push, sparks off the shield

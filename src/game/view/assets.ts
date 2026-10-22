@@ -21,6 +21,8 @@ const MODEL_FILES = {
     mage: 'models/mage.glb',
     bossgolem: 'models/bossgolem.glb',
     captain: 'models/captain.glb',
+    shieldknight: 'models/shieldknight.glb',
+    skeleton: 'models/skeleton.glb',
     colossus: 'models/colossus.glb',
     props: 'models/props.glb',
 } as const;
@@ -30,7 +32,7 @@ type FileKey = keyof typeof MODEL_FILES;
 export type ModelKey = FileKey | 'hero';
 
 /** Files the game can run without. */
-const OPTIONAL = new Set<FileKey>(['werewolf', 'vampire', 'stitched', 'bossgolem', 'captain', 'colossus']);
+const OPTIONAL = new Set<FileKey>(['werewolf', 'vampire', 'stitched', 'bossgolem', 'captain', 'colossus', 'shieldknight', 'skeleton']);
 
 const cache = new Map<FileKey, GLTF>();
 

@@ -73,7 +73,16 @@ export class GameView {
         const kaykitScale = HUNTER_HEIGHT / modelHeight(getModel('knight'));
         const scaleFor = (key: ModelKey, height: number) => height / modelHeight(getModel(key));
         // rival scales come per monster (heroScale below)
-        this.scales = { knight: kaykitScale, barbarian: scaleFor('barbarian', HUNTER_HEIGHT), rogue: kaykitScale, mage: kaykitScale, boss: scaleFor('bossgolem', 3.2), rival: 1 };
+        this.scales = {
+            knight: kaykitScale,
+            barbarian: scaleFor('barbarian', HUNTER_HEIGHT),
+            rogue: kaykitScale,
+            mage: kaykitScale,
+            boss: scaleFor('bossgolem', 3.2),
+            rival: 1,
+            shield: hasModel('shieldknight') ? scaleFor('shieldknight', HUNTER_HEIGHT * 1.05) : kaykitScale,
+            skeleton: hasModel('skeleton') ? scaleFor('skeleton', 1.35) : kaykitScale * 0.8,
+        };
         // each boss type has its own model and height (a missing file falls back to the golem)
         const bossModel = (t: BossType): ModelKey => (t === 'gravelord' ? 'bossgolem' : hasModel(t) ? t : 'bossgolem');
         this.bossLook = (t: BossType) => ({ model: bossModel(t), scale: scaleFor(bossModel(t), T.bosses[t].height) });
@@ -195,7 +204,12 @@ export class GameView {
                         // the golem file stands in for a missing boss model, with the golem's clips
                         const type = look.model === 'bossgolem' ? 'gravelord' : h.bossType;
                         v = new HunterView(getModel(look.model), look.scale, 'boss', undefined, type);
-                    } else v = new HunterView(getModel(h.kind as ModelKey), this.scales[h.kind], h.kind);
+                    } else {
+                        // shield knights and skeletons have their own files (a missing one falls back to the knight)
+                        const file: ModelKey = h.kind === 'shield' ? 'shieldknight' : h.kind === 'skeleton' ? 'skeleton' : (h.kind as ModelKey);
+                        const ok = file === h.kind || hasModel(file as 'shieldknight' | 'skeleton');
+                        v = new HunterView(getModel(ok ? file : 'knight'), this.scales[h.kind], ok ? h.kind : 'knight');
+                    }
                 }
                 this.hunters.set(h.id, v);
                 this.scene.add(v.char.root, v.telegraph);

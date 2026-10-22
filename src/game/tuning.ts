@@ -80,6 +80,8 @@ export interface HunterKindDef {
     boss?: boolean;
     /** PVP rival: a monster from another player's team, played by the AI (see T.rival). */
     rival?: boolean;
+    /** Shield knight: blocks every hit from the front while walking or recovering (see T.shieldKnight). */
+    shield?: boolean;
 }
 
 /** One member of the tag team, driving the shared player body when active. */
@@ -107,7 +109,7 @@ export interface MonsterDef {
 }
 
 export type MonsterKind = 'werewolf' | 'vampire' | 'stitched';
-export type HunterKind = 'knight' | 'barbarian' | 'rogue' | 'mage' | 'boss' | 'rival';
+export type HunterKind = 'knight' | 'barbarian' | 'rogue' | 'mage' | 'boss' | 'rival' | 'shield' | 'skeleton';
 /** Which boss a realm ends with (see T.bosses). */
 export type BossType = 'gravelord' | 'captain' | 'colossus';
 
@@ -268,6 +270,10 @@ export const T = {
     /** Hunter bodies per kind; attacks below. Melee kinds share jab/heavy. */
     hunterKinds: {
         knight: { hp: 60, poise: 40, speed: 165 },
+        // slower and sturdier; its shield turns frontal hits
+        shield: { hp: 80, poise: 55, speed: 140, radius: 32, shield: true },
+        // small, fast and frail; comes in packs in the bone realms
+        skeleton: { hp: 24, poise: 12, speed: 250, radius: 24 },
         barbarian: { hp: 60, poise: 40, speed: 165 },
         rogue: {
             hp: 40,
@@ -418,6 +424,17 @@ export const T = {
     },
     /** A health potion may wait by each realm portal: `chance` of one, healing every monster still standing by `heal` of its max HP. */
     potion: { chance: 0.5, heal: 0.3, radius: 60, distance: 230 },
+    /**
+     * Shield knight: frontal hits (within `arcDeg`) are blocked while it walks
+     * or recovers; finishers, specials and counters break the shield (stun),
+     * and so do `maxBlocks` blocked hits. Hit it from behind or the sides.
+     */
+    shieldKnight: { arcDeg: 150, maxBlocks: 6, heavyChance: 0.3 },
+    /** Skeleton minions: one quick punch (red), no guard. */
+    skeleton: {
+        jab: { heavy: false, windup: 0.45, active: 0.06, recover: 0.4, range: 105, arcDeg: 80, dmg: 6, lunge: 70 } as EnemyAttackDef,
+        body: 30,
+    },
     /** Blood on hits: hits under minDamage (bat nibbles, auras) stay clean; amount = dmg / damagePerUnit, capped. */
     gore: { minDamage: 5, damagePerUnit: 14, maxAmount: 2.5 },
 

@@ -61,6 +61,20 @@ const CHARACTERS = [
         anims: ['Idle', 'Running_A', 'Walking_Backwards', 'Spellcasting', 'Spellcast_Shoot', 'Hit_A', 'Hit_B', 'Death_A', 'Cheer'],
     },
     {
+        // Shield knight: keeps the big shield up in front (flank it or break it).
+        src: path.join(ADV, 'Knight.glb'),
+        out: 'shieldknight.glb',
+        dropMeshes: ['1H_Sword_Offhand', 'Badge_Shield', 'Round_Shield', 'Spike_Shield', '2H_Sword'],
+        anims: ['Idle', 'Walking_B', 'Blocking', 'Block_Hit', '1H_Melee_Attack_Stab', '1H_Melee_Attack_Chop', 'Hit_A', 'Hit_B', 'Death_A', 'Cheer'],
+    },
+    {
+        // Skeleton minion: small, fast, weak, comes in packs in the bone realms.
+        src: path.join(SKL, 'Skeleton_Minion.glb'),
+        out: 'skeleton.glb',
+        dropMeshes: [],
+        anims: ['Idle_Combat', 'Running_A', 'Unarmed_Melee_Attack_Punch_A', 'Unarmed_Melee_Attack_Punch_B', 'Hit_A', 'Hit_B', 'Death_A', 'Block_Hit', 'Skeletons_Awaken_Floor'],
+    },
+    {
         // Boss: the Hunt Captain (barbarian with the big axe, played at boss size).
         src: path.join(ADV, 'Barbarian.glb'),
         out: 'captain.glb',
