@@ -169,7 +169,7 @@ function splatTexture(seed: number): CanvasTexture {
 /** How blood looks and how long it stays (meters and seconds). */
 const GORE = {
     /** Splats on the ground at once; the oldest goes first. */
-    maxSplats: 70,
+    maxSplats: 45,
     splatLife: 9,
     /** Splats fade out over this last part of their life. */
     splatFade: 2.5,

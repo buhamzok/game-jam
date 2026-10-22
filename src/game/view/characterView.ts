@@ -18,6 +18,7 @@ import {
     type Material,
     type MeshStandardMaterial,
     type Object3D,
+    type SkinnedMesh,
 } from 'three';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
@@ -249,7 +250,14 @@ export class CharacterView {
 
     dispose(): void {
         this.mixer.stopAllAction();
+        this.mixer.uncacheRoot(this.model);
         this.root.removeFromParent();
+        // each skinned clone has its own skeleton, and three keeps its bones in a GPU texture:
+        // free it, or every enemy that ever spawned keeps one alive (a steady leak over a run)
+        this.model.traverse((o) => {
+            const sk = (o as SkinnedMesh).isSkinnedMesh ? (o as SkinnedMesh).skeleton : null;
+            sk?.dispose();
+        });
         for (const m of this.materials) m.dispose();
         this.shadow.geometry.dispose();
         (this.shadow.material as Material).dispose();
