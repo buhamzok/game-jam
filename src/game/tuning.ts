@@ -48,9 +48,10 @@ export interface PounceDef {
 export interface EnemyAttackDef {
     /**
      * melee: cone in front; bolt: a projectile along a red line; blast: a purple
-     * circle on the ground; leap: the attacker jumps onto a red circle and lands on it.
+     * circle on the ground; leap: the attacker jumps onto a red circle and lands on it;
+     * charge: the attacker dashes along a red line (speed, for `active` seconds) and hits whoever is in the way.
      */
-    style?: 'melee' | 'bolt' | 'blast' | 'leap';
+    style?: 'melee' | 'bolt' | 'blast' | 'leap' | 'charge';
     heavy: boolean;
     windup: number;
     active: number;
@@ -63,6 +64,9 @@ export interface EnemyAttackDef {
     speed?: number;
     /** blast: circle radius. */
     radius?: number;
+    /** blast: extra casts right after the first (Bone Rain), each re-aimed at the player with this short windup. */
+    repeat?: number;
+    repeatWindup?: number;
 }
 
 /** Per-kind hunter body; ranged kinds keep their distance inside [keepMin, keepMax]. */
@@ -104,6 +108,8 @@ export interface MonsterDef {
 
 export type MonsterKind = 'werewolf' | 'vampire' | 'stitched';
 export type HunterKind = 'knight' | 'barbarian' | 'rogue' | 'mage' | 'boss' | 'rival';
+/** Which boss a realm ends with (see T.bosses). */
+export type BossType = 'gravelord' | 'captain' | 'colossus';
 
 export const T = {
     /** Shared body movement speed scale; each monster multiplies in its own speed. */
@@ -322,6 +328,45 @@ export const T = {
         leapMinDist: 300,
         /** Its death: every hunter left crumbles; the team heals this fraction of max hp. */
         killHeal: 0.35,
+    },
+    /**
+     * The three bosses. The Gravelord uses T.boss as is; the others swap in
+     * their own body, attacks and special (every `specialEvery` attacks).
+     * hp and speed multiply the boss body (T.hunterKinds.boss).
+     */
+    bosses: {
+        gravelord: { name: 'THE GRAVELORD', short: 'GRAVELORD', hp: 1, speed: 1, radius: 92, body: 104, height: 3.2 },
+        captain: {
+            name: 'THE HUNT CAPTAIN',
+            short: 'HUNT CAPTAIN',
+            hp: 0.85,
+            speed: 1.45,
+            radius: 68,
+            body: 82,
+            height: 3.1,
+            sweep: { heavy: false, windup: 0.8, active: 0.14, recover: 0.75, range: 200, arcDeg: 150, dmg: 14, lunge: 70 } as EnemyAttackDef,
+            smash: { heavy: true, windup: 1.1, active: 0.16, recover: 1.0, range: 215, arcDeg: 60, dmg: 24, lunge: 110 } as EnemyAttackDef,
+            /** Charge: a red line locks on, then it dashes the length of it. Dodge sideways. */
+            special: { style: 'charge', heavy: false, windup: 1.05, active: 0.5, recover: 1.0, range: 900, arcDeg: 0, dmg: 20, lunge: 0, speed: 1500 } as EnemyAttackDef,
+            specialEvery: 2,
+            /** Phase 2 adds the whirlwind: an armored spin all around it (purple: guard it to counter). */
+            whirl: { heavy: true, windup: 1.0, active: 0.3, recover: 1.0, range: 235, arcDeg: 360, dmg: 22, lunge: 0 } as EnemyAttackDef,
+        },
+        colossus: {
+            name: 'THE BONE COLOSSUS',
+            short: 'BONE COLOSSUS',
+            hp: 1.2,
+            speed: 0.85,
+            radius: 88,
+            body: 100,
+            height: 3.4,
+            sweep: { heavy: false, windup: 1.1, active: 0.16, recover: 0.95, range: 220, arcDeg: 140, dmg: 16, lunge: 40 } as EnemyAttackDef,
+            smash: { heavy: true, windup: 1.45, active: 0.2, recover: 1.3, range: 245, arcDeg: 80, dmg: 28, lunge: 60 } as EnemyAttackDef,
+            /** Bone Rain: circles drop on the player one after another (3, then 5 in phase 2). Keep moving. */
+            special: { style: 'blast', heavy: false, windup: 1.2, active: 0.1, recover: 1.0, range: 1200, arcDeg: 0, dmg: 14, lunge: 0, radius: 140, repeat: 2, repeatWindup: 0.6 } as EnemyAttackDef,
+            specialEvery: 2,
+            p2Repeat: 4,
+        },
     },
     /**
      * PVP rivals: another player's monsters, one on the field at a time, played

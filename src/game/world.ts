@@ -445,6 +445,23 @@ export class World {
         this.fx.shake(0.12);
     }
 
+    /** The Hunt Captain's charge reaches the player: dodge (red), or parry to stop it dead. */
+    chargeHit(h: Hunter, atk: EnemyAttackDef): void {
+        const p = this.player;
+        const ang = Math.atan2(p.y - h.y, p.x - h.x);
+        const hitsOrigin = p.state === 'dodge' && Math.hypot(p.dodgeOX - h.x, p.dodgeOY - h.y) <= h.r + p.r + 14;
+        const result = this.resolvePlayerHit(atk.dmg, ang, true, hitsOrigin);
+        if (result === 'hit') p.push(ang, 520);
+        if (result === 'parried') {
+            // a parried charge stops dead and staggers
+            h.takeHit(0, 40, { angle: ang + Math.PI, knock: 260, breaker: true });
+            this.fx.sound('parry', { volume: 0.9 });
+            this.fx.text(p.x, p.y - 40, 'STOPPED!', C.block, 34, 0.8);
+            this.fx.freeze(0.08);
+            this.fx.shake(0.3);
+        }
+    }
+
     /** The Gravelord lands its Grave Leap on the locked circle: dodge out (red), or parry it. */
     bossLand(h: Hunter, atk: EnemyAttackDef): void {
         const p = this.player;
@@ -489,7 +506,8 @@ export class World {
         this.fx.sound('growl', { x: h.x, volume: 1.3 });
         this.fx.sound('rumble', { x: h.x });
         this.fx.sound('bell', { delay: 0.3 });
-        store.patch({ banner: 'GRAVELORD ENRAGED', bannerSub: 'The dead rise. Watch for the leap!' });
+        const enragedSub = { gravelord: 'The dead rise. Watch for the leap!', captain: 'Hunters answer his call. Guard the whirlwind!', colossus: 'The dead rise. The bones fall faster!' }[h.bossType];
+        store.patch({ banner: `${T.bosses[h.bossType].short} ENRAGED`, bannerSub: enragedSub });
         this.bannerTimer = T.waves.bannerTime + 0.4;
         const mods = this.waveMods();
         for (let i = 0; i < t.adds; i++) {
@@ -514,7 +532,7 @@ export class World {
         this.fx.ring(h.x, h.y, h.r, 320, 0xffffff, 10, 0.6);
         this.fx.burst(h.x, h.y, 0x3b3630, 40, 640, 10, 0.9, false);
         this.fx.burst(h.x, h.y, 0xfde68a, 30, 520, 7, 0.8);
-        this.fx.text(h.x, h.y - 170, 'GRAVELORD FALLS', 0xfde68a, 52, 1.8);
+        this.fx.text(h.x, h.y - 170, `${T.bosses[h.bossType].short} FALLS`, 0xfde68a, 52, 1.8);
         this.fx.sound('rumble', { volume: 1.2 });
         this.fx.sound('bell', { delay: 0.2 });
         this.fx.sound('vo_flawless', { delay: 1.0 });
@@ -525,7 +543,7 @@ export class World {
             m.energy = T.energy.max;
         }
         this.fx.text(p.x, p.y - 90, `+${Math.round(T.boss.killHeal * 100)}% HP`, C.rod, 32, 1.4);
-        store.patch({ banner: 'GRAVELORD DEFEATED', bannerSub: 'Your team heals and powers up' });
+        store.patch({ banner: `${T.bosses[h.bossType].short} DEFEATED`, bannerSub: 'Your team heals and powers up' });
         this.bannerTimer = T.waves.bannerTime + 1;
         // no "flawless" call from the wave-clear check on top of this one
         this.waveHurt = true;
@@ -1006,7 +1024,7 @@ export class World {
     /** Body size for keeping characters apart (wider than the hit radius: it matches the model). */
     private bodyR(h: Hunter): number {
         const B = T.bodies;
-        if (h.def.boss) return B.boss;
+        if (h.def.boss) return T.bosses[h.bossType].body;
         if (h.rival) return B.monster[h.rival.monster];
         return B.hunter;
     }
@@ -1141,7 +1159,10 @@ export class World {
 
     private bannerSubtitle(): string {
         const d = T.difficulty;
-        if (isBossWave(this.wave)) return 'THE GRAVELORD RISES';
+        if (isBossWave(this.wave)) {
+            const tip = { gravelord: '', captain: ': dodge his charge', colossus: ': keep moving when the bones fall' }[this.realm.boss];
+            return `${T.bosses[this.realm.boss].name} RISES${tip}`;
+        }
         if (this.wave === d.barbarianFrom) return 'Barbarians join, and knights raise shields: break them with a finisher';
         if (this.wave === d.rogueFrom) return 'Crossbow rogues: dodge the red line';
         if (this.wave === d.mageFrom) return 'Mages: get out of the purple circle';
@@ -1197,7 +1218,7 @@ export class World {
         const bossWave = isBossWave(this.wave);
         if (bossWave) this.spawnBoss(mods);
         for (const kind of this.roster()) this.spawnHunter(kind, mods);
-        store.patch({ banner: bossWave ? `WAVE ${this.wave} - GRAVELORD` : `WAVE ${this.wave}`, bannerSub: this.bannerSubtitle() });
+        store.patch({ banner: bossWave ? `WAVE ${this.wave} - ${T.bosses[this.realm.boss].short}` : `WAVE ${this.wave}`, bannerSub: this.bannerSubtitle() });
         // a friend's challenge: reaching the wave after theirs beats it (only on a run from the first realm)
         const ch = store.get().challenge;
         if (ch && this.startRealm === 0 && !store.get().challengeBeaten && this.wave > ch.wave) {
@@ -1350,7 +1371,7 @@ export class World {
         for (let i = 0; i < 12 && !this.clearOfObstacles(Math.cos(ang) * hw, Math.sin(ang) * hh, 92); i++) ang += 0.5;
         const x = Math.cos(ang) * hw;
         const y = Math.sin(ang) * hh;
-        this.hunters.push(new Hunter(this, x, y, 'boss', mods));
+        this.hunters.push(new Hunter(this, x, y, 'boss', mods, null, this.realm.boss));
         this.fx.sound('vo_round5', { delay: 0.8 });
         this.fx.ring(x, y, 10, 240, C.heavy, 14, 0.8);
         this.fx.burst(x, y, 0x3b3630, 26, 420, 9, 0.7, false);
@@ -1477,8 +1498,8 @@ export class World {
                           name: boss!.rival
                               ? `${T.monsters[boss!.rival.monster].name.toUpperCase()}${this.rivalQueue.length ? ` +${this.rivalQueue.length}` : ''}`
                               : boss!.phase === 2
-                                ? 'GRAVELORD · ENRAGED'
-                                : 'GRAVELORD',
+                                ? `${T.bosses[boss!.bossType].short} · ENRAGED`
+                                : T.bosses[boss!.bossType].short,
                           mark: boss!.rival ? undefined : T.boss.enrageAt,
                       }
                     : null,

@@ -67,7 +67,7 @@ export default function Upgrades() {
             <div className="rounded-2xl bg-black/45 p-3">
                 <LevelBar />
                 <p className="mt-2 text-xs font-bold text-white/60">
-                    Earn XP from KOs, cleared waves, Gravelords, finished realms and PVP. Every level gives {LEVEL.pointsPerLevel} points (up to level {LEVEL.max}). Each realm is more
+                    Earn XP from KOs, cleared waves, bosses, finished realms and PVP. Every level gives {LEVEL.pointsPerLevel} points (up to level {LEVEL.max}). Each realm is more
                     dangerous than the last, and pays more XP.
                 </p>
             </div>

@@ -62,6 +62,8 @@ export interface RealmTheme {
 export interface RealmDef {
     id: string;
     name: string;
+    /** The boss at the end of this realm (every 5th wave). */
+    boss: import('./tuning.ts').BossType;
     /** Banner subtitle when arriving. */
     sub: string;
     arena: { w: number; h: number };
@@ -71,6 +73,7 @@ export interface RealmDef {
 
 const GRAVEYARD: RealmDef = {
     id: 'graveyard',
+    boss: 'gravelord',
     name: 'THE GRAVEYARD',
     sub: 'Where the hunt begins',
     arena: { w: 1100, h: 1600 },
@@ -96,6 +99,7 @@ const GRAVEYARD: RealmDef = {
 
 const HOLLOW_WOODS: RealmDef = {
     id: 'woods',
+    boss: 'captain',
     name: 'THE HOLLOW WOODS',
     sub: 'Dead trees block the way: use them as cover from bolts',
     arena: { w: 1500, h: 2000 },
@@ -128,6 +132,7 @@ const HOLLOW_WOODS: RealmDef = {
 
 const PUMPKIN_PATCH: RealmDef = {
     id: 'patch',
+    boss: 'colossus',
     name: 'THE PUMPKIN PATCH',
     sub: 'Lantern light, and the hunters are faster now',
     arena: { w: 1300, h: 1800 },
@@ -158,6 +163,7 @@ const PUMPKIN_PATCH: RealmDef = {
 
 const BLOOD_MOON_CRYPT: RealmDef = {
     id: 'crypt',
+    boss: 'gravelord',
     name: 'THE BLOOD MOON CRYPT',
     sub: 'The moon bleeds and the dead stir',
     arena: { w: 1400, h: 1800 },
@@ -189,6 +195,7 @@ const BLOOD_MOON_CRYPT: RealmDef = {
 
 const AUTUMN_HOLLOW: RealmDef = {
     id: 'autumn',
+    boss: 'captain',
     name: 'THE AUTUMN HOLLOW',
     sub: 'Pines close in: fight between the trunks',
     arena: { w: 1500, h: 1900 },
@@ -222,6 +229,7 @@ const AUTUMN_HOLLOW: RealmDef = {
 
 const SHRINE_ROAD: RealmDef = {
     id: 'shrines',
+    boss: 'colossus',
     name: 'THE SHRINE ROAD',
     sub: 'A long road of skulls: the hunters come from both ends',
     arena: { w: 1200, h: 2100 },
@@ -256,6 +264,7 @@ const SHRINE_ROAD: RealmDef = {
 
 const OSSUARY: RealmDef = {
     id: 'ossuary',
+    boss: 'colossus',
     name: 'THE OSSUARY',
     sub: 'Bones of every hunter who came before',
     arena: { w: 1300, h: 1800 },
@@ -289,6 +298,7 @@ const OSSUARY: RealmDef = {
 
 const DUNGEON_DEPTHS: RealmDef = {
     id: 'depths',
+    boss: 'gravelord',
     name: 'THE DUNGEON DEPTHS',
     sub: 'Torchlight and stone: the pillars stop bolts',
     arena: { w: 1300, h: 1900 },
@@ -323,6 +333,7 @@ const DUNGEON_DEPTHS: RealmDef = {
 
 const HUNTERS_KEEP: RealmDef = {
     id: 'keep',
+    boss: 'captain',
     name: "THE HUNTERS' KEEP",
     sub: 'Their own hall: they will not hold back',
     arena: { w: 1400, h: 1800 },
@@ -356,6 +367,7 @@ const HUNTERS_KEEP: RealmDef = {
 
 const WITCHING_GATE: RealmDef = {
     id: 'gate',
+    boss: 'gravelord',
     name: 'THE WITCHING GATE',
     sub: 'The last stand before the hunt starts over',
     arena: { w: 1400, h: 1800 },
@@ -402,6 +414,7 @@ export const REALMS: RealmDef[] = [
 /** The PVP arena: a sunken pit ringed with graves and candles under a blood moon, no obstacles. */
 export const BLOOD_PIT: RealmDef = {
     id: 'pit',
+    boss: 'gravelord',
     name: 'THE BLOOD PIT',
     sub: 'Tag team against tag team',
     arena: { w: 1200, h: 1500 },

@@ -16,7 +16,7 @@ import {
     SphereGeometry,
 } from 'three';
 import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
-import { T, DEG, type MonsterKind } from '../tuning.ts';
+import { T, DEG, type MonsterKind, type BossType } from '../tuning.ts';
 import type { SkinDef } from '../skins.ts';
 import { C } from '../fxTypes.ts';
 import type { Player } from '../player.ts';
@@ -392,7 +392,55 @@ interface HunterAnims {
     /** Boss Grave Leap: one clip timed so the landing frame meets the end of the windup. */
     leap?: AnimSpec;
     leapImpact?: number;
+    /** Hunt Captain: the whirlwind (a 360-degree heavy) loops this clip; the charge plays `charge` while it dashes. */
+    spin?: AnimSpec;
+    charge?: AnimSpec;
 }
+
+/** The Hunt Captain: the KayKit barbarian at boss size. */
+const CAPTAIN_ANIMS: HunterAnims = {
+    idle: { clip: '2H_Melee_Idle', loop: true },
+    run: { clip: 'Running_A', loop: true, speed: 1.15 },
+    jab: { clip: '2H_Melee_Attack_Slice', fade: 0.08 },
+    heavy: { clip: '2H_Melee_Attack_Chop', fade: 0.08 },
+    jabImpact: 0.45,
+    heavyImpact: 0.48,
+    spin: { clip: '2H_Melee_Attack_Spinning', loop: true, speed: 1.4, fade: 0.08 },
+    charge: { clip: 'Running_B', loop: true, speed: 2.2, fade: 0.05 },
+};
+
+/** The Bone Colossus: the KayKit skeleton warrior at boss size. Bone Rain casts with the summon clip. */
+const COLOSSUS_ANIMS: HunterAnims = {
+    idle: { clip: 'Idle_Combat', loop: true, speed: 0.8 },
+    run: { clip: 'Walking_B', loop: true, speed: 1.3 },
+    jab: { clip: 'Unarmed_Melee_Attack_Punch_B', fade: 0.08 },
+    heavy: { clip: '1H_Melee_Attack_Jump_Chop', fade: 0.08 },
+    jabImpact: 0.4,
+    heavyImpact: 0.55,
+    aim: { clip: 'Spellcast_Summon', loop: true, speed: 0.9, fade: 0.1 },
+};
+
+type Common = { spawn: AnimSpec; flinch: AnimSpec; broken: AnimSpec; dead: AnimSpec; roar: AnimSpec; guard: AnimSpec };
+
+/** Shared moments for the two KayKit bosses. */
+const BOSS_COMMON: Record<'captain' | 'colossus', Common> = {
+    captain: {
+        guard: { clip: 'Block_Hit', speed: 1.1, fade: 0.06 },
+        spawn: { clip: 'Cheer', loop: false, speed: 0.9 },
+        roar: { clip: 'Cheer', loop: false, speed: 1.2, fade: 0.08 },
+        flinch: { clip: 'Hit_A', speed: 1.2, fade: 0.06 },
+        broken: { clip: 'Hit_A', speed: 0.4, fade: 0.05 },
+        dead: { clip: 'Death_A', speed: 0.8, fade: 0.08 },
+    },
+    colossus: {
+        guard: { clip: 'Block_Hit', speed: 1.0, fade: 0.06 },
+        spawn: { clip: 'Skeletons_Awaken_Standing', loop: false, speed: 1.2 },
+        roar: { clip: 'Skeletons_Awaken_Standing', loop: false, speed: 1.4, fade: 0.08 },
+        flinch: { clip: 'Hit_A', speed: 1.0, fade: 0.06 },
+        broken: { clip: 'Hit_A', speed: 0.35, fade: 0.05 },
+        dead: { clip: 'Death_C_Skeletons', speed: 0.9, fade: 0.08 },
+    },
+};
 
 /** The Gravelord: same 24-bone Meshy rig as the monsters, so clip names slot straight in. */
 const BOSS_ANIMS: HunterAnims = {
@@ -559,9 +607,10 @@ export class HunterView {
     /** PVP rivals: a red ring under the feet marks the enemy team. */
     private readonly enemyRing: Mesh | null = null;
 
-    constructor(gltf: GLTF, scale: number, readonly kind: HunterKind, rival?: { monster: MonsterKind; skin?: SkinDef; runScale: number }) {
+    constructor(gltf: GLTF, scale: number, readonly kind: HunterKind, rival?: { monster: MonsterKind; skin?: SkinDef; runScale: number }, bossType: BossType = 'gravelord') {
         this.char = new CharacterView(gltf, scale, kind === 'boss' ? 0.35 : rival ? 0.65 : 0.5);
-        this.anims = HUNTER_ANIMS[kind];
+        const kaykitBoss = kind === 'boss' && bossType !== 'gravelord' ? bossType : null;
+        this.anims = kaykitBoss === 'captain' ? CAPTAIN_ANIMS : kaykitBoss === 'colossus' ? COLOSSUS_ANIMS : HUNTER_ANIMS[kind];
         if (rival) {
             const hero = MONSTER_ANIMS[rival.monster] ?? WEREWOLF_ANIMS;
             this.anims = { ...RIVAL_ANIMS, idle: hero.idle, run: { ...hero.run, speed: (hero.run.speed ?? 1) * rival.runScale } };
@@ -572,7 +621,9 @@ export class HunterView {
             this.enemyRing.position.y = 0.04;
             this.char.root.add(this.enemyRing);
         }
-        this.common = commonFor(kind);
+        this.common = kaykitBoss ? BOSS_COMMON[kaykitBoss] : commonFor(kind);
+        // the Captain wears crimson so he never reads as a big barbarian; the Colossus stays bone-white
+        if (kaykitBoss === 'captain') this.char.setSkin(0xb91c1c, 0.72);
         this.coneFull = new Mesh(sliceGeometry(0.5), this.fullMat);
         this.coneFill = new Mesh(sliceGeometry(0.5), this.fillMat);
         this.coneFill.position.y = 0.005;
@@ -627,6 +678,15 @@ export class HunterView {
                 if (!h.atk) break;
                 const leap = h.atk.style === 'leap' && a.leap;
                 const spec = leap ? a.leap! : h.atk.heavy ? a.heavy : a.jab;
+                // Captain: the charge stands braced, then runs; the whirlwind spins from windup to recovery
+                if (h.atk.style === 'charge' && a.charge) {
+                    c.play(h.state === 'active' ? a.charge : h.state === 'windup' ? a.idle : a.idle, `charge-${h.state}-${this.serial}`);
+                    break;
+                }
+                if (h.atk.arcDeg >= 360 && a.spin) {
+                    c.play(a.spin, `spin-${this.serial}`);
+                    break;
+                }
                 if (h.state === 'windup' && this.attackKey !== `atk-${this.serial}`) {
                     this.attackKey = `atk-${this.serial}`;
                     if (leap) {
@@ -718,10 +778,11 @@ export class HunterView {
         const atk = h.state === 'windup' ? h.atk : null;
         const style = atk?.style ?? 'melee';
         this.cone.visible = !!atk && style === 'melee';
-        this.line.visible = !!atk && style === 'bolt';
+        this.line.visible = !!atk && (style === 'bolt' || style === 'charge');
         this.circle.visible = !!atk && (style === 'blast' || style === 'leap');
         if (!atk) return;
         const color = style === 'bolt' ? C.bolt : atk.heavy ? C.heavy : C.jab;
+        // the charge's lane: as long as the dash, and as wide as the Captain
         const progress = Math.min(1, h.st / atk.windup);
         this.fullMat.color.setHex(color);
         this.fillMat.color.setHex(color);
@@ -742,10 +803,19 @@ export class HunterView {
             this.coneFill.scale.setScalar(Math.max(0.001, reach * progress));
             this.fullMat.opacity = 0.18;
             this.fillMat.opacity = 0.42;
-        } else if (style === 'bolt') {
+        } else if (style === 'bolt' || style === 'charge') {
             // the line goes solid once the aim locks: that is the moment to move
             const locked = h.st >= atk.windup * T.hunter.trackFraction;
-            const len = atk.range * U;
+            const len = (style === 'charge' ? (atk.speed ?? 1400) * atk.active + h.r : atk.range) * U;
+            if (style === 'charge') {
+                this.line.position.set(h.x * U, 0.05, h.y * U);
+                this.line.rotation.y = -h.facing;
+                this.lineFull.scale.set(len, 1, h.r * 2 * U);
+                this.lineFill.scale.set(Math.max(0.001, len * progress), 1, h.r * (locked ? 1.6 : 0.8) * U);
+                this.fullMat.opacity = locked ? 0.28 : 0.12;
+                this.fillMat.opacity = locked ? 0.6 : 0.35;
+                return;
+            }
             this.line.position.set(h.x * U, 0.05, h.y * U);
             this.line.rotation.y = -h.facing;
             this.lineFull.scale.set(len, 1, 0.16);

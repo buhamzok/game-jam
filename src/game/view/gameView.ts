@@ -6,10 +6,10 @@
  * center because the bottom of the phone is under the thumbs.
  */
 import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
-import { T } from '../tuning.ts';
+import { T, type BossType } from '../tuning.ts';
 import { World } from '../world.ts';
 import type { HunterKind } from '../hunter.ts';
-import { getModel, type ModelKey } from './assets.ts';
+import { getModel, hasModel, type ModelKey } from './assets.ts';
 import { store } from '../../state/store.ts';
 import { Fx3D, U } from './fx3d.ts';
 import { Arena3D } from './arena3d.ts';
@@ -43,6 +43,7 @@ export class GameView {
     private readonly camera = new PerspectiveCamera(CAM.fov, 1, 0.1, 80);
     private readonly fx = new Fx3D();
     private arena: Arena3D;
+    private bossLook!: (t: BossType) => { model: ModelKey; scale: number };
     private readonly kaykitScale: number;
     private shownRealm = 0;
     private readonly portal = new PortalView();
@@ -73,6 +74,9 @@ export class GameView {
         const scaleFor = (key: ModelKey, height: number) => height / modelHeight(getModel(key));
         // rival scales come per monster (heroScale below)
         this.scales = { knight: kaykitScale, barbarian: scaleFor('barbarian', HUNTER_HEIGHT), rogue: kaykitScale, mage: kaykitScale, boss: scaleFor('bossgolem', 3.2), rival: 1 };
+        // each boss type has its own model and height (a missing file falls back to the golem)
+        const bossModel = (t: BossType): ModelKey => (t === 'gravelord' ? 'bossgolem' : hasModel(t) ? t : 'bossgolem');
+        this.bossLook = (t: BossType) => ({ model: bossModel(t), scale: scaleFor(bossModel(t), T.bosses[t].height) });
 
         this.kaykitScale = kaykitScale;
         this.world = new World(this.fx);
@@ -186,7 +190,12 @@ export class GameView {
                     const runScale = (T.hunterKinds.rival.speed * T.rival.monsters[m].speed) / T.monsters[m].speed;
                     v = new HunterView(gltf, HERO_HEIGHTS[m] / modelHeight(gltf), 'rival', { monster: m, skin, runScale });
                 } else {
-                    v = new HunterView(getModel(h.kind === 'boss' ? 'bossgolem' : (h.kind as ModelKey)), this.scales[h.kind], h.kind);
+                    if (h.kind === 'boss') {
+                        const look = this.bossLook(h.bossType);
+                        // the golem file stands in for a missing boss model, with the golem's clips
+                        const type = look.model === 'bossgolem' ? 'gravelord' : h.bossType;
+                        v = new HunterView(getModel(look.model), look.scale, 'boss', undefined, type);
+                    } else v = new HunterView(getModel(h.kind as ModelKey), this.scales[h.kind], h.kind);
                 }
                 this.hunters.set(h.id, v);
                 this.scene.add(v.char.root, v.telegraph);

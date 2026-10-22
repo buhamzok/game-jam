@@ -61,6 +61,26 @@ const CHARACTERS = [
         anims: ['Idle', 'Running_A', 'Walking_Backwards', 'Spellcasting', 'Spellcast_Shoot', 'Hit_A', 'Hit_B', 'Death_A', 'Cheer'],
     },
     {
+        // Boss: the Hunt Captain (barbarian with the big axe, played at boss size).
+        src: path.join(ADV, 'Barbarian.glb'),
+        out: 'captain.glb',
+        dropMeshes: ['1H_Axe_Offhand', 'Barbarian_Round_Shield', '1H_Axe', 'Mug'],
+        anims: [
+            '2H_Melee_Idle', 'Running_A', 'Running_B', '2H_Melee_Attack_Slice', '2H_Melee_Attack_Chop',
+            '2H_Melee_Attack_Spinning', 'Cheer', 'Hit_A', 'Death_A', 'Block_Hit',
+        ],
+    },
+    {
+        // Boss: the Bone Colossus (skeleton warrior, played at boss size).
+        src: path.join(SKL, 'Skeleton_Warrior.glb'),
+        out: 'colossus.glb',
+        dropMeshes: [],
+        anims: [
+            'Idle_Combat', 'Walking_B', 'Unarmed_Melee_Attack_Punch_B', '1H_Melee_Attack_Jump_Chop', 'Spellcast_Summon',
+            'Skeletons_Awaken_Standing', 'Hit_A', 'Death_C_Skeletons', 'Block_Hit',
+        ],
+    },
+    {
         // Stand-in hero until the generated werewolf arrives.
         src: path.join(SKL, 'Skeleton_Minion.glb'),
         out: 'hero-placeholder.glb',

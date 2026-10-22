@@ -16,7 +16,7 @@
  * The boss (Gravelord) never flinches; only a poise break stuns it. At half
  * hp it roars into phase 2: faster attacks, wider quakes and the Grave Leap.
  */
-import { T, DEG, type EnemyAttackDef, type HunterKind, type HunterKindDef, type MonsterKind } from './tuning.ts';
+import { T, DEG, type EnemyAttackDef, type HunterKind, type HunterKindDef, type MonsterKind, type BossType } from './tuning.ts';
 import { C } from './fxTypes.ts';
 import type { World } from './world.ts';
 
@@ -137,6 +137,12 @@ export class Hunter {
     }
     /** The rival's special for its monster. */
     private special: EnemyAttackDef | null = null;
+    /** Captain and Colossus: their special (charge, Bone Rain), the Captain's phase-2 whirlwind, and casts left in a Bone Rain. */
+    private bossSpecial: EnemyAttackDef | null = null;
+    private whirl: EnemyAttackDef | null = null;
+    private repeatLeft = 0;
+    /** Charge: seconds until the next gap-closing charge. */
+    private chargeCd = 0;
     /** Boss: seconds until the next Grave Leap is allowed. */
     private leapCd = 0;
     /** Grave Leap: where the jump started, and 0..1 height of the arc right now (the view lifts the body). */
@@ -152,6 +158,7 @@ export class Hunter {
         readonly kind: HunterKind,
         mods: WaveMods = NO_MODS,
         rival: RivalSpec | null = null,
+        readonly bossType: BossType = 'gravelord',
     ) {
         this.x = x;
         this.y = y;
@@ -173,6 +180,17 @@ export class Hunter {
         this.quake = scaleAttack(T.boss.quake, mods);
         this.leap = scaleAttack(T.boss.leap, mods);
         this.cooldownMult = mods.cooldown;
+        if (this.def.boss && bossType !== 'gravelord') {
+            const B = T.bosses[bossType];
+            this.r = B.radius;
+            this.hpMax *= B.hp;
+            this.hp = this.hpMax;
+            this.speed *= B.speed;
+            this.jab = scaleAttack(B.sweep, mods);
+            this.heavy = scaleAttack(B.smash, mods);
+            this.bossSpecial = scaleAttack(B.special, mods);
+            if (bossType === 'captain') this.whirl = scaleAttack(T.bosses.captain.whirl, mods);
+        }
     }
 
     /** Boss phase 2: every attack winds up and recovers faster, quakes grow. */
@@ -184,7 +202,8 @@ export class Hunter {
         this.quake = { ...fast(this.quake), radius: T.boss.p2QuakeRadius };
         this.cooldownMult *= T.boss.p2Cooldown;
         this.phase = 2;
-        this.bossMoves = 0;
+        // the Gravelord starts its count over; the Captain and the Colossus open phase 2 with their special
+        this.bossMoves = this.bossType === 'gravelord' ? 0 : 99;
         this.leapCd = 1.5;
         this.atk = null;
         this.poise = this.poiseMax;
@@ -229,6 +248,18 @@ export class Hunter {
             return dist <= melee.range ? melee : null;
         }
         if (!this.def.boss) return Math.random() < T.hunter.heavyChance ? this.heavy : this.jab;
+        if (this.bossType === 'captain') {
+            // charges to close a gap or every few attacks; phase 2 mixes in the whirlwind
+            const sp = this.bossSpecial!;
+            if (this.chargeCd <= 0 && (this.bossMoves >= T.bosses.captain.specialEvery || dist > 480)) return sp;
+            const melee = this.phase === 2 && this.bossMoves % 3 === 2 && this.whirl ? this.whirl : this.bossMoves % 2 === 1 ? this.heavy : this.jab;
+            return dist <= melee.range ? melee : null;
+        }
+        if (this.bossType === 'colossus') {
+            if (this.bossMoves >= T.bosses.colossus.specialEvery) return this.bossSpecial;
+            const melee = this.bossMoves % 2 === 1 ? this.heavy : this.jab;
+            return dist <= melee.range ? melee : null;
+        }
         if (this.bossMoves >= (this.phase === 2 ? T.boss.p2QuakeEvery : T.boss.quakeEvery)) return this.quake;
         // phase 2: a player who keeps their distance gets leapt on
         if (this.phase === 2 && this.leapCd <= 0 && dist >= T.boss.leapMinDist) return this.leap;
@@ -247,6 +278,7 @@ export class Hunter {
         this.flashT = Math.max(0, this.flashT - dt);
         this.cooldown = Math.max(0, this.cooldown - dt);
         this.leapCd = Math.max(0, this.leapCd - dt);
+        this.chargeCd = Math.max(0, this.chargeCd - dt);
         this.guardCd = Math.max(0, this.guardCd - dt);
         this.voiceCd = Math.max(0, this.voiceCd - dt);
         if (this.state !== 'windup' || this.atk?.style !== 'leap') this.air = 0;
@@ -295,8 +327,11 @@ export class Hunter {
                     } else if (this.atk.heavy) this.w.fx.sound('heavyTell', { x: this.x });
                     this.whooshed = false;
                     // quake fires every few moves, then the sweep/smash alternation starts over
-                    if (atk === this.quake || (this.rival && atk === this.special)) this.bossMoves = 0;
+                    if (atk === this.quake || atk === this.bossSpecial || (this.rival && atk === this.special)) this.bossMoves = 0;
                     else if (atk !== this.leap) this.bossMoves++;
+                    if (atk.style === 'charge') this.chargeCd = 4;
+                    // Bone Rain: more drops once enraged
+                    this.repeatLeft = atk.repeat ? (this.phase === 2 && this.bossType === 'colossus' ? T.bosses.colossus.p2Repeat : atk.repeat) : 0;
                     this.aimX = p.x;
                     this.aimY = p.y;
                     this.enter('windup');
@@ -333,6 +368,18 @@ export class Hunter {
             }
             case 'active': {
                 const atk = this.atk!;
+                if (atk.style === 'charge') {
+                    // dash along the locked line; the first touch on the player is the hit
+                    const s = (atk.speed ?? 1400) * dt;
+                    this.x += Math.cos(this.facing) * s;
+                    this.y += Math.sin(this.facing) * s;
+                    if (!this.struck && Math.hypot(p.x - this.x, p.y - this.y) <= this.r + p.r + 14) {
+                        this.struck = true;
+                        this.w.chargeHit(this, atk);
+                    }
+                    if (this.state === 'active' && this.st >= atk.active) this.enter('recover');
+                    break;
+                }
                 if (atk.lunge > 0) {
                     const s = (atk.lunge / atk.active) * dt;
                     this.x += Math.cos(this.facing) * s;
@@ -346,7 +393,16 @@ export class Hunter {
                     else this.w.hunterStrike(this, atk);
                 }
                 // the strike may have broken this hunter with a counter
-                if (this.state === 'active' && this.st >= atk.active) this.enter('recover');
+                if (this.state === 'active' && this.st >= atk.active) {
+                    if (this.repeatLeft > 0) {
+                        // Bone Rain: the next circle drops on wherever the player is now
+                        this.repeatLeft--;
+                        this.aimX = p.x;
+                        this.aimY = p.y;
+                        this.enter('windup');
+                        this.st = atk.windup - (atk.repeatWindup ?? 0.6);
+                    } else this.enter('recover');
+                }
                 break;
             }
             case 'recover':

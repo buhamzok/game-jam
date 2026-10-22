@@ -98,7 +98,7 @@ function HowToPlay({ onClose }: { onClose: () => void }) {
                         <span className="text-amber-400">Full bar</span>: TRANSFORM for 10 s. Only transforming spends the bar.
                     </p>
                     <p>
-                        Every 5 waves the <span className="text-rose-300">Gravelord</span> rises. Beat it to open a portal to the next of ten realms; half the portals leave a health potion.
+                        Every 5 waves a <span className="text-rose-300">boss</span> rises: the Gravelord, the Hunt Captain or the Bone Colossus. Beat it to open a portal to the next of ten realms; half the portals leave a health potion.
                     </p>
                 </div>
                 <table className="mt-3 w-full text-left text-xs font-bold text-white/80">

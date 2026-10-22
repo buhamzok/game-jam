@@ -83,7 +83,7 @@ export default function SkinShop() {
                 <p className="rounded-xl bg-black/50 px-3 py-1.5 text-sm font-black text-violet-200 tabular-nums">{'\u{1F47B}'} {souls} Souls</p>
             </div>
             <p className="text-center text-xs font-bold text-white/60">
-                Earn Souls every run: 1 per KO, 5 per wave, 25 per Gravelord. Skins are cosmetic only.
+                Earn Souls every run: 1 per KO, 5 per wave, 25 per boss. Skins are cosmetic only.
             </p>
 
             {MONSTERS.map((kind) => {

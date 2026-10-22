@@ -20,6 +20,8 @@ const MODEL_FILES = {
     rogue: 'models/rogue.glb',
     mage: 'models/mage.glb',
     bossgolem: 'models/bossgolem.glb',
+    captain: 'models/captain.glb',
+    colossus: 'models/colossus.glb',
     props: 'models/props.glb',
 } as const;
 
@@ -28,7 +30,7 @@ type FileKey = keyof typeof MODEL_FILES;
 export type ModelKey = FileKey | 'hero';
 
 /** Files the game can run without. */
-const OPTIONAL = new Set<FileKey>(['werewolf', 'vampire', 'stitched', 'bossgolem']);
+const OPTIONAL = new Set<FileKey>(['werewolf', 'vampire', 'stitched', 'bossgolem', 'captain', 'colossus']);
 
 const cache = new Map<FileKey, GLTF>();
 
@@ -71,6 +73,11 @@ export async function loadModels(onProgress: (p: number) => void = () => {}): Pr
         }),
     );
     if (!cache.has('werewolf')) await load('placeholder');
+}
+
+/** Whether a model file loaded (optional files may be missing). */
+export function hasModel(key: FileKey): boolean {
+    return cache.has(key);
 }
 
 /** Per-monster model resolution: its own file, then any generated hero, then the stand-in. */
