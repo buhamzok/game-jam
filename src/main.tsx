@@ -50,6 +50,8 @@ async function boot() {
         await Promise.all([loadDailyHunt(), loadSkins(), loadProgress()]);
         // quests read the device cache too; after the rest so Souls and XP are in place for claims
         await loadQuests();
+        const { loadRank } = await import('./sdk/pvpRank.ts');
+        await loadRank();
     } catch (err) {
         console.warn('[Main] Daily Hunt load failed (carrying on)', err);
     }

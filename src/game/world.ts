@@ -229,6 +229,7 @@ export class World {
             this.tutorial.setKnight(k);
             store.patch({ tutorialSkip: false, tutorialRequested: false });
         }
+        store.patch({ pvpRankDelta: null });
         store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: this.tier(), boonChoice: null, boonPick: null, boons: {}, combo: 0, comboGrade: '', runStats: null });
         if (this.startRealm > 0) {
             store.patch({ banner: this.realm.name, bannerSub: `${this.realm.sub} · starting at wave ${this.wave + 1}` });
@@ -310,6 +311,7 @@ export class World {
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         this.gainXp(win ? XP.pvpWin : XP.pvpLoss);
         if (win) questEvent('pvpwin');
+        void import('../sdk/pvpRank.ts').then((r) => r.recordMatch(win, this.clock)).catch(() => undefined);
         questEvent('run');
         const rival = this.rivalTeam!;
         void import('../sdk/pvp.ts').then((p) => p.reportBattle(win, rival)).catch(() => undefined);

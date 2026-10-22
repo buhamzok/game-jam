@@ -132,6 +132,10 @@ export interface AppState {
     } | null;
     /** A quest just completed (in-game toast). */
     questToast: { text: string; at: number } | null;
+    /** PVP rank points and record (sdk/pvpRank.ts), the last match's change, and this week's top 5. */
+    pvpRank: { rp: number; wins: number; losses: number; streak: number };
+    pvpRankDelta: { delta: number; tierUp: string } | null;
+    pvpBoard: { username: string; score: number; rank: number | null }[];
     /** Combo meter: hits in a row right now (0 = none) and its grade. */
     combo: number;
     comboGrade: string;
@@ -226,6 +230,9 @@ let state: AppState = {
     realmsUnlocked: 0,
     tutorial: null,
     quests: null,
+    pvpRank: { rp: 0, wins: 0, losses: 0, streak: 0 },
+    pvpRankDelta: null,
+    pvpBoard: [],
     questToast: null,
     combo: 0,
     comboGrade: '',

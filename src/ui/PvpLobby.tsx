@@ -10,6 +10,58 @@ import { T, type MonsterKind } from '../game/tuning.ts';
 import { skinById } from '../game/skins.ts';
 import { findRival, teamPower, type Rival } from '../sdk/pvp.ts';
 import { Swatch } from './SkinShop.tsx';
+import { RANK, TIERS, nextTier, tierFor } from '../game/ranks.ts';
+import { fetchPvpBoard } from '../sdk/pvpRank.ts';
+
+/** Rank badge, progress to the next tier, record, and this week's top 5. */
+function RankCard() {
+    const r = useStore((s) => s.pvpRank);
+    const board = useStore((s) => s.pvpBoard);
+    const t = tierFor(r.rp);
+    const n = nextTier(r.rp);
+    const pct = n ? ((r.rp - t.at) / (n.at - t.at)) * 100 : 100;
+    return (
+        <div className="mx-auto mt-4 max-w-md rounded-2xl bg-black/50 p-3 ring-1 ring-white/10">
+            <div className="flex items-center gap-3">
+                <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl text-2xl" style={{ background: `${t.color}22`, boxShadow: `inset 0 0 0 2px ${t.color}aa` }}>
+                    {t.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between">
+                        <p className="text-lg font-black" style={{ color: t.color }}>
+                            {t.name.toUpperCase()}
+                        </p>
+                        <p className="text-xs font-black text-white/70 tabular-nums">{r.rp} RP</p>
+                    </div>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: t.color }} />
+                    </div>
+                    <p className="mt-1 text-[10px] font-bold text-white/50 tabular-nums">
+                        {n ? `${n.at - r.rp} RP to ${n.name}` : 'Top tier'} · {r.wins}W {r.losses}L{r.streak > 1 ? ` · ${r.streak} win streak` : ''}
+                    </p>
+                </div>
+            </div>
+            <p className="mt-2 text-[10px] font-bold text-white/45">
+                Win +{RANK.win} RP (+{RANK.streakBonus} per win in a row), lose -{RANK.loss}. Tiers: {TIERS.map((x) => x.name).join(', ')}.
+            </p>
+            {board.length > 0 && (
+                <div className="mt-2 border-t border-white/10 pt-2">
+                    <p className="text-[10px] font-black tracking-[0.2em] text-rose-300">THIS WEEK</p>
+                    {board.map((e, i) => (
+                        <div key={i} className="flex justify-between text-xs font-bold text-white/80 tabular-nums">
+                            <span className="truncate">
+                                {e.rank ?? i + 1}. {e.username || 'hunter'}
+                            </span>
+                            <span style={{ color: tierFor(e.score).color }}>
+                                {tierFor(e.score).name} · {e.score}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 const MONSTERS: MonsterKind[] = ['werewolf', 'vampire', 'stitched'];
 
@@ -45,6 +97,7 @@ function Team({ title, sub, units, accent }: { title: string; sub: string; units
 export default function PvpLobby() {
     const rival = useStore((s) => s.rival);
     const bestWave = useStore((s) => s.bestWave);
+    const level = useStore((s) => s.level);
     const equipped = useStore((s) => s.equippedSkins);
     const owned = useStore((s) => s.ownedSkins);
     const [searching, setSearching] = useState(false);
@@ -58,6 +111,7 @@ export default function PvpLobby() {
     }, []);
 
     useEffect(() => {
+        void fetchPvpBoard();
         if (!store.get().rival) void search();
         const onKey = (e: KeyboardEvent) => {
             if (e.code === 'Escape') store.patch({ phase: 'menu' });
@@ -90,7 +144,7 @@ export default function PvpLobby() {
             </p>
 
             <div className="mx-auto mt-5 flex max-w-md items-start justify-center gap-4">
-                <Team title="YOU" sub={`power ${teamPower(bestWave)}`} units={mine} accent="#fbbf24" />
+                <Team title="YOU" sub={`power ${teamPower(bestWave, level)}`} units={mine} accent="#fbbf24" />
                 <p className="mt-16 text-4xl font-black italic text-rose-500 drop-shadow-[0_3px_0_rgba(0,0,0,0.8)]">VS</p>
                 {rival && !searching ? (
                     <Team title={rival.name.toUpperCase()} sub={`${rival.bot ? 'bot · ' : ''}power ${rival.power}`} units={rival.units} accent="#fb7185" />
@@ -102,7 +156,9 @@ export default function PvpLobby() {
                 )}
             </div>
 
-            <div className="mx-auto mt-6 flex max-w-xs flex-col gap-2.5">
+            <RankCard />
+
+            <div className="mx-auto mt-5 flex max-w-xs flex-col gap-2.5">
                 <button
                     type="button"
                     disabled={!rival || searching}

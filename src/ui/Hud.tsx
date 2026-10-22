@@ -17,6 +17,7 @@ import { telemetry } from '../sdk/dailyHunt.ts';
 import { sendChallenge } from '../sdk/challenge.ts';
 import { freePoints } from '../sdk/progress.ts';
 import { boonDef, type BoonId } from '../game/boons.ts';
+import { tierFor } from '../game/ranks.ts';
 
 const GRADE_COLOR: Record<string, string> = { SS: '#fde68a', S: '#fbbf24', A: '#c4b5fd', B: '#93c5fd', C: '#86efac', D: '#d1d5db' };
 
@@ -341,6 +342,8 @@ export default function Hud() {
     const combo = useStore((s) => s.combo);
     const comboGrade = useStore((s) => s.comboGrade);
     const runStats = useStore((s) => s.runStats);
+    const rankDelta = useStore((s) => s.pvpRankDelta);
+    const rank = useStore((s) => s.pvpRank);
     const xpEarned = useStore((s) => s.xpEarned);
     const levelsGained = useStore((s) => s.levelsGained);
     const points = useStore((s) => freePoints(s));
@@ -500,6 +503,18 @@ export default function Hud() {
                         {pvpResult === 'win' ? `You beat ${rival?.name ?? 'your rival'}'s tag team` : `${rival?.name ?? 'Your rival'}'s team wins this one`}
                         {rival?.bot ? ' (bot)' : ''}
                     </p>
+                    {rankDelta && (
+                        <div className="flex flex-col items-center">
+                            <p className={`text-xl font-black tabular-nums ${rankDelta.delta >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                                {rankDelta.delta >= 0 ? '+' : ''}
+                                {rankDelta.delta} RP
+                            </p>
+                            <p className="text-xs font-black tabular-nums" style={{ color: tierFor(rank.rp).color }}>
+                                {tierFor(rank.rp).icon} {tierFor(rank.rp).name} · {rank.rp} RP
+                            </p>
+                            {rankDelta.tierUp && <p className="stay-pop mt-1 text-lg font-black text-amber-300">RANK UP: {rankDelta.tierUp.toUpperCase()}!</p>}
+                        </div>
+                    )}
                     {runStats && <RunSummary s={runStats} />}
                     {soulsEarned > 0 && (
                         <p className="text-sm font-black text-violet-200 tabular-nums">

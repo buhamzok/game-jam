@@ -1,0 +1,12 @@
+{
+    "requiresToken": false,
+    "modes": {
+        "default": { "displayName": "Daily Hunt" },
+        "pvp": { "displayName": "PVP Arena" }
+    },
+    "periods": {
+        "alltime": { "displayName": "All Time", "type": "alltime" },
+        "daily": { "displayName": "Daily", "type": "daily" },
+        "weekly": { "displayName": "This Week", "type": "weekly" }
+    }
+}
