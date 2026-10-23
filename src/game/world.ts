@@ -20,7 +20,7 @@ import { REALMS, PORTAL, BLOOD_PIT, type RealmDef } from './realms.ts';
 import type { RivalSpec } from './hunter.ts';
 import { teamPower, type Rival } from '../sdk/pvp.ts';
 import { XP, boostsFor, type Boosts } from './progression.ts';
-import { addXp, unlockRealm } from '../sdk/progress.ts';
+import { addXp, flushXp, unlockRealm } from '../sdk/progress.ts';
 import { Tutorial, type TutorialEvent } from './tutorial.ts';
 import { questEvent } from '../sdk/quests.ts';
 import { BOON_TUNING, applyBoon, boonDef, rollBoons, type BoonId } from './boons.ts';
@@ -235,6 +235,7 @@ export class World {
             store.patch({ tutorialSkip: false, tutorialRequested: false });
         }
         store.patch({ pvpRankDelta: null });
+        flushXp();
         store.patch({ gameOver: false, banner: '', bannerSub: '', challengeBeaten: false, realmName: this.realm.name, portalOpen: false, pvpResult: null, xpEarned: 0, levelsGained: 0, realmTier: this.tier(), boonChoice: null, boonPick: null, boons: {}, combo: 0, comboGrade: '', runStats: null });
         if (this.startRealm > 0) {
             store.patch({ banner: this.realm.name, bannerSub: `${this.realm.sub} · starting at wave ${this.wave + 1}` });
@@ -315,6 +316,7 @@ export class World {
         store.patch({ gameOver: true, pvpResult: win ? 'win' : 'loss', finalWave: 0, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls, runStats: this.summary() });
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         this.gainXp(win ? XP.pvpWin : XP.pvpLoss);
+        flushXp();
         if (win) questEvent('pvpwin');
         void import('../sdk/pvpRank.ts').then((r) => r.recordMatch(win, this.clock)).catch(() => undefined);
         questEvent('run');
@@ -710,7 +712,11 @@ export class World {
             else if (result === 'perfect' || result === 'dodged' || result === 'immune') b.passed = true;
             else b.life = 0;
         }
-        this.bolts = this.bolts.filter((b) => b.life > 0);
+        let bw = 0;
+        for (let i = 0; i < this.bolts.length; i++) {
+            if (this.bolts[i].life > 0) this.bolts[bw++] = this.bolts[i];
+        }
+        this.bolts.length = bw;
     }
 
     /** Parried bolt: it flies back at the nearest hunter (usually the shooter). */
@@ -1073,7 +1079,11 @@ export class World {
         this.updatePending(dt);
         this.separate();
         this.clampToArena();
-        this.hunters = this.hunters.filter((h) => !h.removable);
+        let hw = 0;
+        for (let i = 0; i < this.hunters.length; i++) {
+            if (!this.hunters[i].removable) this.hunters[hw++] = this.hunters[i];
+        }
+        this.hunters.length = hw;
         this.bigMoveTimer = Math.max(0, this.bigMoveTimer - realDt);
         this.rainCd = Math.max(0, this.rainCd - realDt);
         this.rod = Math.max(0, this.rod - realDt);
@@ -1086,11 +1096,14 @@ export class World {
     private updatePending(dt: number): void {
         if (dt <= 0 || this.pending.length === 0) return;
         const due: (() => void)[] = [];
-        for (const e of this.pending) {
+        let pw = 0;
+        for (let i = 0; i < this.pending.length; i++) {
+            const e = this.pending[i];
             e.t -= dt;
             if (e.t <= 0) due.push(e.fn);
+            else this.pending[pw++] = e;
         }
-        this.pending = this.pending.filter((e) => e.t > 0);
+        this.pending.length = pw;
         for (const fn of due) fn();
     }
 
@@ -1125,10 +1138,16 @@ export class World {
      * through and are pushed out when they end. A hunter in the air (the
      * Gravelord's leap) lands first.
      */
+    private readonly separateList: Hunter[] = [];
     private separate(): void {
         const p = this.player;
         const B = T.bodies;
-        const list = this.hunters.filter((h) => h.alive && h.air <= 0);
+        const list = this.separateList;
+        list.length = 0;
+        for (let i = 0; i < this.hunters.length; i++) {
+            const h = this.hunters[i];
+            if (h.alive && h.air <= 0) list.push(h);
+        }
         const pr = B.monster[p.kind()];
         const solid = !p.phasing && p.alive;
         for (let pass = 0; pass < B.passes; pass++) {
@@ -1295,6 +1314,7 @@ export class World {
             // wave cleared: a flawless one gets its own call
             this.waveCleared = true;
             if (this.wave > 0) this.gainXp(this.tierXp(XP.wave + XP.perWave * this.wave));
+            flushXp();
             if (!this.waveHurt && this.wave > 0) this.fx.sound('vo_flawless', { delay: 0.3 });
             if (this.wave > 0 && !isBossWave(this.wave)) {
                 const p = this.player;
@@ -1507,6 +1527,7 @@ export class World {
         this.witching = 0;
         // Souls for skins: KOs, waves cleared (the last one was not), bosses
         const souls = Math.round((this.kills * SOULS.perKill + Math.max(0, this.wave - 1) * SOULS.perWave + this.bossKills * SOULS.perBoss) * (1 + BOON_TUNING.harvest * this.boon('harvest')));
+        flushXp();
         store.patch({ gameOver: true, finalWave: this.wave, finalKills: this.kills, banner: '', bannerSub: '', soulsEarned: souls, runStats: this.summary() });
         void import('../sdk/skinShop.ts').then((s) => s.addSouls(souls)).catch(() => undefined);
         // the RUN app's own Share button now sends this run as a challenge
@@ -1535,7 +1556,9 @@ export class World {
         const u = p.unit();
         const teamKey = `${p.active}|${p.team.map((m) => `${Math.ceil(m.hp)}|${m.alive}`).join('|')}`;
         const boss = this.hunters.find((h) => (h.def.boss || h.rival) && h.alive);
-        const bossKey = boss ? `${Math.ceil(boss.hp)}|${boss.hpMax}|${boss.phase}|${boss.rival?.monster ?? ''}|${this.rivalQueue.length}` : '';
+        // Quantize boss HP bar to 1% steps so bleed ticks or tiny swarm bites on a 1,500-HP boss don't re-render React every frame
+        const bossPct = boss ? Math.max(1, Math.ceil((boss.hp / boss.hpMax) * 100)) : 0;
+        const bossKey = boss ? `${bossPct}|${boss.phase}|${boss.rival?.monster ?? ''}|${this.rivalQueue.length}` : '';
         const next = {
             hp: Math.ceil(u.hp),
             energy: Math.floor(u.energy),
@@ -1598,7 +1621,7 @@ export class World {
                 team: p.team.map((m) => ({ kind: m.kind, hp: Math.ceil(m.hp), hpMax: p.maxHp(m.kind), alive: m.alive })),
                 bossHp: next.boss
                     ? {
-                          frac: Math.min(1, Math.max(0, Number(next.boss.split('|')[0]) / Number(next.boss.split('|')[1]))),
+                          frac: Math.min(1, Math.max(0, bossPct / 100)),
                           name: boss!.rival
                               ? `${T.monsters[boss!.rival.monster].name.toUpperCase()}${this.rivalQueue.length ? ` +${this.rivalQueue.length}` : ''}`
                               : boss!.phase === 2

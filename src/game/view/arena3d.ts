@@ -1,32 +1,69 @@
 /**
  * One realm's arena: ground, the border around the fight area, solid
  * obstacles, scattered KayKit props and the night lighting, all driven by the
- * realm's theme (see ../realms.ts). Props are cloned from props.glb (one node
- * per prop, named after its source file) and scaled with the same factor as
- * the characters, so the pack's proportions stay intact.
+ * realm's theme (see ../realms.ts). Props are batched with InstancedMesh per
+ * source mesh in props.glb and scaled with the same factor as the characters,
+ * cutting ~90 prop draw calls down to a handful and keeping a fixed PointLight
+ * count across all realms so shaders never recompile on portal transitions.
  */
 import {
     Box3,
     CanvasTexture,
     Color,
     DirectionalLight,
+    Euler,
     FogExp2,
     Group,
     HemisphereLight,
+    Matrix4,
     Mesh,
     MeshStandardMaterial,
     PlaneGeometry,
     PointLight,
+    Quaternion,
     RepeatWrapping,
     SRGBColorSpace,
     Vector3,
+    type BufferGeometry,
+    type Material,
     type Object3D,
     type Scene,
 } from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { FloorPattern, RealmDef } from '../realms.ts';
 import { getModel } from './assets.ts';
 import { U } from './fx3d.ts';
 import { seeded } from './random.ts';
+
+/** Fixed number of extra scene point lights (beyond the 2 corner lamps) so light count never changes between realms. */
+const EXTRA_POINT_LIGHTS = 4;
+
+interface PropMeshPart {
+    geometry: BufferGeometry;
+    material: Material | Material[];
+    localMatrix: Matrix4;
+}
+
+const propPartsCache = new Map<string, PropMeshPart[]>();
+const propLengthCache = new Map<string, number>();
+
+function getPropParts(root: Object3D, name: string): PropMeshPart[] {
+    let parts = propPartsCache.get(name);
+    if (parts) return parts;
+    parts = [];
+    const src = root.getObjectByName(name);
+    if (!src) return parts;
+    src.updateWorldMatrix(true, true);
+    const invRoot = new Matrix4().copy(src.matrixWorld).invert();
+    src.traverse((o) => {
+        const m = o as Mesh;
+        if (!m.isMesh) return;
+        const localMatrix = new Matrix4().multiplyMatrices(invRoot, m.matrixWorld);
+        parts!.push({ geometry: m.geometry, material: m.material, localMatrix });
+    });
+    propPartsCache.set(name, parts);
+    return parts;
+}
 
 function groundTexture(base: string, speckles: string[], seed: number, pattern: FloorPattern = 'speckle'): CanvasTexture {
     const c = document.createElement('canvas');
@@ -111,6 +148,13 @@ export class Arena3D {
     private readonly props: Object3D;
     private readonly scale: number;
     private readonly textures: CanvasTexture[] = [];
+    private readonly mergedGeos: BufferGeometry[] = [];
+    private readonly placements = new Map<string, Matrix4[]>();
+    private readonly tmpPos = new Vector3();
+    private readonly tmpQuat = new Quaternion();
+    private readonly tmpScale = new Vector3();
+    private readonly tmpEuler = new Euler();
+    private readonly tmpMat = new Matrix4();
 
     constructor(scene: Scene, kaykitScale: number, private readonly realm: RealmDef) {
         this.scale = kaykitScale;
@@ -148,9 +192,11 @@ export class Arena3D {
         this.group.add(floor);
         this.textures.push(outside, dirt);
 
-        this.buildBorder(hw, hh, seed);
+        const extraLights: { x: number; y: number; z: number; intensity: number; distance: number }[] = [];
+        this.buildBorder(hw, hh, seed, extraLights);
         this.scatter(hw, hh, seed);
         for (const o of realm.obstacles) this.place(o.prop, o.x * U, o.y * U, o.rot ?? 0, o.scale);
+        this.flushInstances();
 
         // warm light from lantern clusters by the near corners
         for (const sx of [-1, 1]) {
@@ -163,33 +209,80 @@ export class Arena3D {
         for (const i of lit.slice(0, 4)) {
             const o = realm.obstacles[i];
             if (!o) continue;
-            const l = new PointLight(th.lamp, 4, 5, 1.6);
-            l.position.set(o.x * U, 1.4, o.y * U);
+            extraLights.push({ x: o.x * U, y: 1.4, z: o.y * U, intensity: 4, distance: 5 });
+        }
+        // Always add exactly EXTRA_POINT_LIGHTS point lights (unused ones have intensity 0)
+        // so the total light count in the scene stays constant across every realm.
+        for (let i = 0; i < EXTRA_POINT_LIGHTS; i++) {
+            const spec = extraLights[i];
+            const l = new PointLight(th.lamp, spec ? spec.intensity : 0, spec ? spec.distance : 5, 1.6);
+            if (spec) l.position.set(spec.x, spec.y, spec.z);
             this.group.add(l);
         }
         scene.add(this.group);
     }
 
-    private place(name: string, x: number, z: number, rotY = 0, scaleMul = 1): Object3D | null {
-        const src = this.props.getObjectByName(name);
-        if (!src) {
+    private place(name: string, x: number, z: number, rotY = 0, scaleMul = 1, y = 0): void {
+        if (!this.props.getObjectByName(name)) {
             console.warn(`[arena] prop "${name}" missing`);
-            return null;
+            return;
         }
-        const o = src.clone();
-        o.position.set(x, 0, z);
-        o.rotation.set(0, rotY, 0);
-        o.scale.setScalar(this.scale * scaleMul);
-        this.group.add(o);
-        return o;
+        this.tmpPos.set(x, y, z);
+        this.tmpEuler.set(0, rotY, 0);
+        this.tmpQuat.setFromEuler(this.tmpEuler);
+        this.tmpScale.setScalar(this.scale * scaleMul);
+        const m = new Matrix4().compose(this.tmpPos, this.tmpQuat, this.tmpScale);
+        let list = this.placements.get(name);
+        if (!list) {
+            list = [];
+            this.placements.set(name, list);
+        }
+        list.push(m);
+    }
+
+    private flushInstances(): void {
+        const byMaterial = new Map<Material, BufferGeometry[]>();
+        for (const [name, matrices] of this.placements) {
+            const parts = getPropParts(this.props, name);
+            if (matrices.length === 0 || parts.length === 0) continue;
+            for (const part of parts) {
+                const mat = Array.isArray(part.material) ? part.material[0] : part.material;
+                let geos = byMaterial.get(mat);
+                if (!geos) {
+                    geos = [];
+                    byMaterial.set(mat, geos);
+                }
+                for (let i = 0; i < matrices.length; i++) {
+                    this.tmpMat.multiplyMatrices(matrices[i], part.localMatrix);
+                    const cloned = part.geometry.clone();
+                    cloned.applyMatrix4(this.tmpMat);
+                    geos.push(cloned);
+                }
+            }
+        }
+        for (const [mat, geos] of byMaterial) {
+            if (geos.length === 0) continue;
+            const merged = mergeGeometries(geos, false);
+            for (const g of geos) g.dispose();
+            if (!merged) continue;
+            const mesh = new Mesh(merged, mat);
+            this.group.add(mesh);
+            this.mergedGeos.push(merged);
+        }
+        this.placements.clear();
     }
 
     /** Length of a prop along its local X axis, in meters after scaling. */
     private lengthX(name: string): number {
-        const src = this.props.getObjectByName(name);
-        if (!src) return 1;
-        const size = new Box3().setFromObject(src).getSize(new Vector3());
-        return Math.max(size.x, size.z) * this.scale;
+        let raw = propLengthCache.get(name);
+        if (raw === undefined) {
+            const src = this.props.getObjectByName(name);
+            if (!src) return 1;
+            const size = new Box3().setFromObject(src).getSize(new Vector3());
+            raw = Math.max(size.x, size.z);
+            propLengthCache.set(name, raw);
+        }
+        return raw * this.scale;
     }
 
     /** Lay props along a line, `step` meters apart, picking names in turn. */
@@ -202,7 +295,7 @@ export class Arena3D {
         }
     }
 
-    private buildBorder(hw: number, hh: number, seed: number): void {
+    private buildBorder(hw: number, hh: number, seed: number, extraLights: { x: number; y: number; z: number; intensity: number; distance: number }[]): void {
         const rand = seeded(5 + seed);
         const style = this.realm.theme.border;
         const m = 0.15; // the border sits just outside the walkable area
@@ -283,16 +376,12 @@ export class Arena3D {
             this.line(hw + 0.3, -hh, hw + 0.3, hh, half, () => 'd_wall_half', () => -Math.PI / 2);
             this.line(-hw, hh + 0.4, hw, hh + 0.4, this.lengthX('d_barrier_half'), () => 'd_barrier_half', () => 0);
             for (const x of [-hw * 0.5, hw * 0.5]) {
-                const t = this.place('d_torch_mounted', x, -hh - 0.05, 0);
-                if (t) t.position.y = 1.2;
-                const l = new PointLight(this.realm.theme.lamp, 5, 6, 1.6);
-                l.position.set(x, 1.8, -hh + 0.4);
-                this.group.add(l);
+                this.place('d_torch_mounted', x, -hh - 0.05, 0, 1, 1.2);
+                extraLights.push({ x, y: 1.8, z: -hh + 0.4, intensity: 5, distance: 6 });
             }
             if (this.realm.id === 'keep') {
                 for (const x of [-hw * 0.75, 0, hw * 0.75]) {
-                    const b = this.place('d_banner_triple_red', x, -hh - 0.05, 0);
-                    if (b) b.position.y = 0.4;
+                    this.place('d_banner_triple_red', x, -hh - 0.05, 0, 1, 0.4);
                 }
             }
             return;
@@ -362,10 +451,12 @@ export class Arena3D {
 
     dispose(): void {
         this.group.removeFromParent();
+        for (const g of this.mergedGeos) g.dispose();
+        this.mergedGeos.length = 0;
         this.group.traverse((o) => {
             const mesh = o as Mesh;
             if (!mesh.isMesh) return;
-            // cloned props share geometry and materials with props.glb: only free what this arena made
+            // only free ground/floor meshes whose material uses a CanvasTexture made by this arena
             if ((mesh.material as MeshStandardMaterial).map instanceof CanvasTexture) {
                 mesh.geometry.dispose();
                 (mesh.material as MeshStandardMaterial).dispose();

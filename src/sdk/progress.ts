@@ -17,12 +17,28 @@ const KEY_TUTORIAL = 'ttt.tutorial';
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+let pendingXp = -1;
+let pendingEarned = 0;
+
 function saveSoon(): void {
     if (saveTimer) return;
     saveTimer = setTimeout(() => {
         saveTimer = null;
-        cacheSet(KEY_XP, String(store.get().xp));
+        const xpToSave = pendingXp >= 0 ? pendingXp : store.get().xp;
+        cacheSet(KEY_XP, String(xpToSave));
     }, 1500);
+}
+
+/** Flush any deferred mid-run XP to the store (called on wave clear / game over / menu). */
+export function flushXp(): void {
+    if (pendingXp < 0 && pendingEarned === 0) return;
+    const s = store.get();
+    const xp = pendingXp >= 0 ? pendingXp : s.xp;
+    const { level } = levelFor(xp);
+    const xpEarned = s.xpEarned + pendingEarned;
+    pendingXp = -1;
+    pendingEarned = 0;
+    store.patch({ xp, level, xpEarned });
 }
 
 /** Boot: total XP and spent points. */
@@ -44,14 +60,20 @@ export function freePoints(s = store.get()): number {
 export function addXp(n: number): number {
     if (n <= 0) return 0;
     const s = store.get();
-    const before = s.level;
-    const xp = s.xp + Math.round(n);
+    const baseXp = pendingXp >= 0 ? pendingXp : s.xp;
+    const { level: before } = levelFor(baseXp);
+    const delta = Math.round(n);
+    const xp = baseXp + delta;
     const { level } = levelFor(xp);
-    store.patch({ xp, level, xpEarned: s.xpEarned + Math.round(n) });
+    pendingXp = xp;
+    pendingEarned += delta;
     saveSoon();
-    if (level > before) {
-        cacheSet(KEY_XP, String(xp));
-        telemetry('level_up', { level });
+    if (level > before || s.phase !== 'playing' || s.gameOver) {
+        flushXp();
+        if (level > before) {
+            cacheSet(KEY_XP, String(xp));
+            telemetry('level_up', { level });
+        }
     }
     return level - before;
 }

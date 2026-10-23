@@ -6,7 +6,7 @@
  * pointer-events-auto. `pt-safe-top` (see app.css) pads below the RUN host
  * header.
  */
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import RundotGameAPI from '@series-inc/rundot-game-sdk/api';
 import { store, useStore } from '../state/store.ts';
 import { input } from '../game/input.ts';
@@ -22,7 +22,9 @@ import { tierFor } from '../game/ranks.ts';
 const GRADE_COLOR: Record<string, string> = { SS: '#fde68a', S: '#fbbf24', A: '#c4b5fd', B: '#93c5fd', C: '#86efac', D: '#d1d5db' };
 
 /** Combo meter: hits in a row and the grade, on the right edge; pops on every hit. */
-function ComboMeter({ combo, grade }: { combo: number; grade: string }) {
+const ComboMeter = memo(function ComboMeter() {
+    const combo = useStore((s) => s.combo);
+    const grade = useStore((s) => s.comboGrade);
     if (combo < 3) return null;
     const color = GRADE_COLOR[grade] ?? '#fff';
     return (
@@ -36,7 +38,7 @@ function ComboMeter({ combo, grade }: { combo: number; grade: string }) {
             </span>
         </div>
     );
-}
+});
 
 /** A quest just completed: a short toast at the top, gone after 3 s. */
 function QuestToast() {
@@ -194,7 +196,7 @@ function toggleMute() {
 }
 
 /** Shield pips: one blocked per full pip; crack one per absorbed hit. */
-function GuardPips({ hits, broken }: { hits: number; broken: boolean }) {
+const GuardPips = memo(function GuardPips({ hits, broken }: { hits: number; broken: boolean }) {
     const n = T.guard.maxHits;
     return (
         <div className="flex items-center gap-1">
@@ -214,9 +216,9 @@ function GuardPips({ hits, broken }: { hits: number; broken: boolean }) {
             })}
         </div>
     );
-}
+});
 
-function Bar({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
+const Bar = memo(function Bar({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
     const pct = Math.max(0, Math.min(100, (value / max) * 100));
     return (
         <div className="flex items-center gap-2">
@@ -226,10 +228,10 @@ function Bar({ value, max, color, label }: { value: number; max: number; color: 
             </div>
         </div>
     );
-}
+});
 
 /** Small portrait button for one team member; taps swap (or demand Crimson Rain). */
-function Portrait({ kind, slot, hp, hpMax, active, rainReady }: { kind: MonsterKind; slot: number; hp: number; hpMax: number; active: boolean; rainReady: boolean }) {
+const Portrait = memo(function Portrait({ kind, slot, hp, hpMax, active, rainReady }: { kind: MonsterKind; slot: number; hp: number; hpMax: number; active: boolean; rainReady: boolean }) {
     const ring = active ? 'ring-2 ring-amber-400' : rainReady && !active ? 'ring-2 ring-fuchsia-500 animate-pulse' : 'ring-1 ring-white/20';
     const bar = active ? '#22c55e' : '#94a3b8';
     const dead = hp <= 0;
@@ -250,7 +252,7 @@ function Portrait({ kind, slot, hp, hpMax, active, rainReady }: { kind: MonsterK
             </div>
         </button>
     );
-}
+});
 
 /** End screen: XP this run, level-ups, and a way to spend the points. */
 function XpLine({ xp, levels, level, points }: { xp: number; levels: number; level: number; points: number }) {
@@ -347,8 +349,6 @@ export default function Hud() {
     const tutorial = useStore((s) => s.tutorial);
     const boonChoice = useStore((s) => s.boonChoice);
     const boons = useStore((s) => s.boons);
-    const combo = useStore((s) => s.combo);
-    const comboGrade = useStore((s) => s.comboGrade);
     const runStats = useStore((s) => s.runStats);
     const rankDelta = useStore((s) => s.pvpRankDelta);
     const rank = useStore((s) => s.pvpRank);
@@ -463,7 +463,7 @@ export default function Hud() {
                 </div>
             )}
 
-            {!gameOver && <ComboMeter combo={combo} grade={comboGrade} />}
+            {!gameOver && <ComboMeter />}
             {!gameOver && <QuestToast />}
 
             {boonChoice && !gameOver && <BoonPicker choice={boonChoice} owned={boons} />}

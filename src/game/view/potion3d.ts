@@ -32,8 +32,9 @@ function glowTexture(): CanvasTexture {
 
 export class PotionView {
     readonly group = new Group();
+    private readonly meshes = new Group();
     private readonly bottle = new Group();
-    private readonly light = new PointLight(0xff3040, 3, 3.5, 1.6);
+    private readonly light = new PointLight(0xff3040, 0, 3.5, 1.6);
     private readonly glowTex = glowTexture();
     private readonly disposables: { dispose(): void }[] = [];
     private t = 0;
@@ -62,13 +63,17 @@ export class PotionView {
         this.light.position.y = 0.6;
         // about knee-high next to a monster, so it reads from the game camera
         this.bottle.scale.setScalar(1.7);
-        this.group.add(this.bottle, g, this.light);
-        this.group.visible = false;
+        this.meshes.add(this.bottle, g);
+        this.meshes.visible = false;
+        this.group.add(this.meshes, this.light);
     }
 
     update(potion: { x: number; y: number } | null, realDt: number): void {
-        this.group.visible = !!potion;
-        if (!potion) return;
+        this.meshes.visible = !!potion;
+        if (!potion) {
+            this.light.intensity = 0;
+            return;
+        }
         this.t += realDt;
         this.group.position.set(potion.x * U, 0, potion.y * U);
         // bob and turn so it catches the eye

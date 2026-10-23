@@ -18,6 +18,7 @@ export class BoltsView {
     private readonly playerMat = new MeshBasicMaterial({ color: C.counter, transparent: true, opacity: 0.9, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
     private readonly coreMat = new MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
     private readonly views = new Map<number, { root: Group; glow: Mesh }>();
+    private readonly liveIds = new Set<number>();
 
     constructor() {
         // lie flat on the ground plane, long axis along +X
@@ -26,7 +27,8 @@ export class BoltsView {
     }
 
     sync(bolts: Bolt[]): void {
-        const live = new Set<number>();
+        const live = this.liveIds;
+        live.clear();
         for (const b of bolts) {
             live.add(b.id);
             let v = this.views.get(b.id);
