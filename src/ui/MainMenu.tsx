@@ -8,10 +8,10 @@ import { useEffect, useRef, useState } from 'react';
 import { store, useStore } from '../state/store.ts';
 import { audio } from '../game/audio.ts';
 import { fetchDailyBoard } from '../sdk/dailyHunt.ts';
-import { flushXp, freePoints } from '../sdk/progress.ts';
+import { freePoints } from '../sdk/progress.ts';
 import { LevelBar } from './Upgrades.tsx';
 import { REALMS } from '../game/realms.ts';
-import { claimChest, claimQuest, publish as publishQuests } from '../sdk/quests.ts';
+import { claimChest, claimQuest } from '../sdk/quests.ts';
 import { chestReward } from '../game/quests.ts';
 
 /** Daily quests and the daily chest. */
@@ -233,8 +233,6 @@ export default function MainMenu() {
     const questsDone = quests ? quests.list.filter((x) => x.progress >= x.target).length : 0;
     const claimable = quests ? quests.list.some((x) => x.progress >= x.target && !x.claimed) || quests.chestReady : false;
     useEffect(() => {
-        flushXp();
-        publishQuests();
         void fetchDailyBoard();
     }, []);
     useEffect(() => {

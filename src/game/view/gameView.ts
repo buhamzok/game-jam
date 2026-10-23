@@ -52,7 +52,6 @@ export class GameView {
     /** One mirror view per team member; only the active monster is visible. */
     private readonly heroes: HeroView[] = [];
     private readonly hunters = new Map<number, HunterView>();
-    private readonly aliveHunterIds = new Set<number>();
     private readonly bolts = new BoltsView();
     private readonly scales: Record<HunterKind, number>;
     private readonly camTarget = new Vector3();
@@ -60,8 +59,6 @@ export class GameView {
     private readonly witchEl: HTMLDivElement;
     private readonly resizeObserver: ResizeObserver;
     private flashAlpha = 0;
-    private lastFlashStyle = -1;
-    private lastWitchStyle = -1;
     private last = 0;
     private paused = false;
     private landscape = false;
@@ -119,47 +116,9 @@ export class GameView {
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(host);
         this.resize();
-        this.warmShaders();
 
         this.last = performance.now();
         this.renderer.setAnimationLoop((now) => this.frame(now));
-    }
-
-    /**
-     * Pre-compile character shaders and upload model textures to the GPU before wave 1 begins
-     * so spawning new enemy types or bosses on later waves never stalls the main thread.
-     */
-    private warmShaders(): void {
-        const tempViews: HunterView[] = [];
-        const warmKinds: HunterKind[] = ['knight', 'barbarian', 'rogue', 'mage', 'shield', 'skeleton'];
-        for (const k of warmKinds) {
-            const file: ModelKey = k === 'shield' ? 'shieldknight' : k === 'skeleton' ? 'skeleton' : (k as ModelKey);
-            const ok = file === k || hasModel(file as 'shieldknight' | 'skeleton');
-            const v = new HunterView(getModel(ok ? file : 'knight'), this.scales[k], ok ? k : 'knight');
-            v.char.root.position.set(0, -50, 0);
-            this.scene.add(v.char.root, v.telegraph);
-            tempViews.push(v);
-        }
-        const bossTypes: BossType[] = ['gravelord', 'captain', 'colossus'];
-        for (const bt of bossTypes) {
-            const look = this.bossLook(bt);
-            const type = look.model === 'bossgolem' ? 'gravelord' : bt;
-            const v = new HunterView(getModel(look.model), look.scale, 'boss', undefined, type);
-            v.char.root.position.set(0, -50, 0);
-            this.scene.add(v.char.root, v.telegraph);
-            tempViews.push(v);
-        }
-        try {
-            // Compile both opaque and transparent variants so neither spawn/death fades nor combat hits ever recompile mid-fight
-            this.renderer.compile(this.scene, this.camera);
-            for (const v of tempViews) v.char.setOpacity(0.5);
-            for (const h of this.heroes) h.char.setOpacity(0.5);
-            this.renderer.compile(this.scene, this.camera);
-            for (const h of this.heroes) h.char.setOpacity(1);
-        } catch {
-            /* ignore if context unavailable in headless test */
-        }
-        for (const v of tempViews) v.dispose();
     }
 
     private overlay(): HTMLDivElement {
@@ -243,8 +202,7 @@ export class GameView {
     }
 
     private syncHunters(animDt: number, realDt: number): void {
-        const alive = this.aliveHunterIds;
-        alive.clear();
+        const alive = new Set<number>();
         for (const h of this.world.hunters) {
             alive.add(h.id);
             let v = this.hunters.get(h.id);
@@ -313,18 +271,10 @@ export class GameView {
     private updateOverlays(dt: number): void {
         if (!store.get().flash) this.flashAlpha = 0;
         this.flashAlpha = Math.max(0, this.flashAlpha - dt * 2.5);
-        const fRounded = Math.round(this.flashAlpha * 1000);
-        if (fRounded !== this.lastFlashStyle) {
-            this.lastFlashStyle = fRounded;
-            this.flashEl.style.opacity = String(fRounded / 1000);
-        }
+        this.flashEl.style.opacity = String(this.flashAlpha);
         const w = this.world.witching;
         const t = w > 0 ? Math.min(1, w / 0.3, (T.witching.duration - w) / 0.1 + 0.3) : 0;
-        const wRounded = Math.round(t * 1000);
-        if (wRounded !== this.lastWitchStyle) {
-            this.lastWitchStyle = wRounded;
-            this.witchEl.style.opacity = String(wRounded / 1000);
-        }
+        this.witchEl.style.opacity = String(t);
     }
 
     destroy(): void {

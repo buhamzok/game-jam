@@ -91,14 +91,9 @@ class ParticleLayer {
         this.list.push({ x, y, z, vx, vy, vz, drag, size, r: color.r, g: color.g, b: color.b, life, max: life, shrink, peak, gravity, land });
     }
 
-    private lastActive = 0;
-
     update(dt: number): void {
         if (dt > 0) {
-            let write = 0;
-            const list = this.list;
-            for (let i = 0; i < list.length; i++) {
-                const p = list[i];
+            for (const p of this.list) {
                 p.x += p.vx * dt;
                 p.y += p.vy * dt;
                 p.z += p.vz * dt;
@@ -116,15 +111,10 @@ class ParticleLayer {
                     }
                 }
                 p.life -= dt;
-                if (p.life > 0) {
-                    list[write++] = p;
-                }
             }
-            list.length = write;
+            this.list = this.list.filter((p) => p.life > 0);
         }
         const n = this.list.length;
-        if (n === 0 && this.lastActive === 0) return;
-        this.lastActive = n;
         for (let i = 0; i < n; i++) {
             const p = this.list[i];
             const t = p.life / p.max;
@@ -138,14 +128,7 @@ class ParticleLayer {
             this.alpha[i] = p.shrink ? 1 : t * p.peak;
         }
         this.geo.setDrawRange(0, n);
-        if (n > 0) {
-            for (const name of ['position', 'pcolor', 'psize', 'palpha']) {
-                const attr = this.geo.getAttribute(name) as BufferAttribute;
-                attr.clearUpdateRanges();
-                attr.addUpdateRange(0, n * attr.itemSize);
-                attr.needsUpdate = true;
-            }
-        }
+        for (const name of ['position', 'pcolor', 'psize', 'palpha']) (this.geo.getAttribute(name) as BufferAttribute).needsUpdate = true;
     }
 
     dispose(): void {
@@ -203,36 +186,12 @@ interface Splat {
 
 interface Timed {
     obj: Mesh | Sprite;
-    sharedGeo?: boolean;
     life: number;
     max: number;
     tick: (t: number, age: number) => void;
 }
 
-const MAX_TEXT_CACHE = 160;
-const textCache = new Map<string, { tex: CanvasTexture; aspect: number }>();
-const sharedRingGeo = new RingGeometry(0.86, 1, 48);
-const slashGeoCache = new Map<string, RingGeometry>();
-
-function getSlashGeo(inner: number, spreadRad: number): RingGeometry {
-    const key = `${inner.toFixed(2)}|${spreadRad.toFixed(2)}`;
-    let geo = slashGeoCache.get(key);
-    if (!geo) {
-        geo = new RingGeometry(inner, 1, 24, 1, -spreadRad / 2, spreadRad);
-        slashGeoCache.set(key, geo);
-    }
-    return geo;
-}
-
 function textTexture(str: string, color: number): { tex: CanvasTexture; aspect: number } {
-    const key = `${str}|${color}`;
-    const cached = textCache.get(key);
-    if (cached) {
-        // Refresh LRU order
-        textCache.delete(key);
-        textCache.set(key, cached);
-        return cached;
-    }
     const px = 96;
     const c = document.createElement('canvas');
     const g = c.getContext('2d')!;
@@ -251,16 +210,7 @@ function textTexture(str: string, color: number): { tex: CanvasTexture; aspect: 
     g.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
     g.fillText(str, w / 2, c.height / 2);
     const tex = new CanvasTexture(c);
-    const entry = { tex, aspect: w / c.height };
-    if (textCache.size >= MAX_TEXT_CACHE) {
-        const oldestKey = textCache.keys().next().value;
-        if (oldestKey !== undefined) {
-            textCache.get(oldestKey)?.tex.dispose();
-            textCache.delete(oldestKey);
-        }
-    }
-    textCache.set(key, entry);
-    return entry;
+    return { tex, aspect: w / c.height };
 }
 
 export class Fx3D implements Fx {
@@ -376,7 +326,7 @@ export class Fx3D implements Fx {
     slash(x: number, y: number, angle: number, radius: number, spreadRad: number, color: number, width = 12, life = 0.14): void {
         const r = radius * U;
         const inner = Math.max(0.05, 1 - (width * U * 1.6) / r);
-        const geo = getSlashGeo(inner, spreadRad);
+        const geo = new RingGeometry(inner, 1, 24, 1, -spreadRad / 2, spreadRad);
         const mat = new MeshBasicMaterial({ color, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
         const mesh = new Mesh(geo, mat);
         mesh.rotation.set(-Math.PI / 2, 0, -angle);
@@ -384,7 +334,6 @@ export class Fx3D implements Fx {
         this.group.add(mesh);
         this.timed.push({
             obj: mesh,
-            sharedGeo: true,
             life,
             max: life,
             tick: (t) => {
@@ -395,15 +344,15 @@ export class Fx3D implements Fx {
     }
 
     ring(x: number, y: number, r0: number, r1: number, color: number, width = 8, life = 0.35): void {
+        const geo = new RingGeometry(0.86, 1, 48);
         const mat = new MeshBasicMaterial({ color, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide });
-        const mesh = new Mesh(sharedRingGeo, mat);
+        const mesh = new Mesh(geo, mat);
         mesh.rotation.x = -Math.PI / 2;
         mesh.position.set(x * U, 0.06, y * U);
         this.group.add(mesh);
         const thick = Math.max(1, width / 8);
         this.timed.push({
             obj: mesh,
-            sharedGeo: true,
             life,
             max: life,
             tick: (t) => {
@@ -519,34 +468,29 @@ export class Fx3D implements Fx {
         this.trauma = Math.max(0, this.trauma - realDt * 1.6);
         this.glow.update(simDt);
         this.soft.update(simDt);
-        let write = 0;
-        const timed = this.timed;
-        for (let i = 0; i < timed.length; i++) {
-            const e = timed[i];
+        for (const e of this.timed) {
             e.life -= realDt;
-            if (e.life > 0) {
-                e.tick(e.life / e.max, e.max - e.life);
-                timed[write++] = e;
-            } else {
-                this.disposeTimed(e);
-            }
+            e.tick(Math.max(0, e.life / e.max), e.max - e.life);
         }
-        timed.length = write;
+        for (const e of this.timed) {
+            if (e.life <= 0) this.disposeTimed(e);
+        }
         for (const sp of this.splats) {
             sp.life -= realDt;
             sp.mat.opacity = GORE.splatOpacity * Math.min(1, sp.life / GORE.splatFade);
         }
         while (this.splats.length && this.splats[0].life <= 0) this.removeSplat(this.splats.shift()!);
+        this.timed = this.timed.filter((e) => e.life > 0);
     }
 
     private disposeTimed(e: Timed): void {
         e.obj.removeFromParent();
         if (e.obj instanceof Mesh) {
-            if (!e.sharedGeo) e.obj.geometry.dispose();
+            e.obj.geometry.dispose();
             (e.obj.material as MeshBasicMaterial).dispose();
         } else {
             const m = e.obj.material as SpriteMaterial;
-            // m.map is owned by textCache (LRU) and shared across identical damage numbers/callouts
+            m.map?.dispose();
             m.dispose();
         }
     }

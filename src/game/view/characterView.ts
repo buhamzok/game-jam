@@ -53,27 +53,10 @@ function blobShadowTexture(): CanvasTexture {
     return shadowTexture;
 }
 
-const shadowGeos = new Map<number, CircleGeometry>();
-
-function blobShadowGeometry(radius: number): CircleGeometry {
-    let geo = shadowGeos.get(radius);
-    if (!geo) {
-        geo = new CircleGeometry(radius, 24);
-        shadowGeos.set(radius, geo);
-    }
-    return geo;
-}
-
 /** Height of a glTF scene in its own units (bind pose). */
-const heightCache = new WeakMap<GLTF, number>();
 export function modelHeight(gltf: GLTF): number {
-    let h = heightCache.get(gltf);
-    if (h === undefined) {
-        const box = new Box3().setFromObject(gltf.scene);
-        h = box.max.y - box.min.y;
-        heightCache.set(gltf, h);
-    }
-    return h;
+    const box = new Box3().setFromObject(gltf.scene);
+    return box.max.y - box.min.y;
 }
 
 export class CharacterView {
@@ -97,28 +80,21 @@ export class CharacterView {
     private skinUniforms: { uSkinColor: { value: Color }; uSkinAmount: { value: number } } | null = null;
     private readonly tintColor = new Color();
     private tintKey = '';
-    private glowKey = '';
-    private lastAlpha = 1;
     private readonly baseScale: number;
 
     constructor(gltf: GLTF, scale: number, shadowRadius: number) {
         this.model = cloneSkinned(gltf.scene);
         this.baseScale = scale;
         this.model.scale.setScalar(scale);
-        const seen = new Map<Material, MeshStandardMaterial>();
         this.model.traverse((o) => {
             const mesh = o as Mesh;
             if (!mesh.isMesh) return;
             mesh.frustumCulled = false; // skinned bounds do not follow animation
             const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
             const cloned = mats.map((m: Material) => {
-                let c = seen.get(m);
-                if (!c) {
-                    c = m.clone() as MeshStandardMaterial;
-                    seen.set(m, c);
-                    this.materials.push(c);
-                    this.baseColors.push(c.color ? c.color.clone() : new Color(1, 1, 1));
-                }
+                const c = m.clone() as MeshStandardMaterial;
+                this.materials.push(c);
+                this.baseColors.push(c.color ? c.color.clone() : new Color(1, 1, 1));
                 return c;
             });
             mesh.material = Array.isArray(mesh.material) ? cloned : cloned[0];
@@ -127,7 +103,7 @@ export class CharacterView {
         this.root.add(this.body);
 
         this.shadow = new Mesh(
-            blobShadowGeometry(shadowRadius),
+            new CircleGeometry(shadowRadius, 24),
             new MeshBasicMaterial({ map: blobShadowTexture(), transparent: true, depthWrite: false }),
         );
         this.shadow.rotation.x = -Math.PI / 2;
@@ -201,9 +177,6 @@ export class CharacterView {
 
     /** Tint toward `color` by `amount` (0..1) through emissive light. */
     setGlow(color: number, amount: number): void {
-        const key = `${color}|${amount.toFixed(3)}`;
-        if (key === this.glowKey) return;
-        this.glowKey = key;
         this.flashColor.setHex(color);
         for (const m of this.materials) {
             if (!m.emissive) continue;
@@ -264,8 +237,6 @@ export class CharacterView {
     }
 
     setOpacity(alpha: number): void {
-        if (Math.abs(alpha - this.lastAlpha) < 0.002) return;
-        this.lastAlpha = alpha;
         const transparent = alpha < 0.999;
         for (const m of this.materials) {
             if (m.transparent !== transparent) {
@@ -288,6 +259,7 @@ export class CharacterView {
             sk?.dispose();
         });
         for (const m of this.materials) m.dispose();
+        this.shadow.geometry.dispose();
         (this.shadow.material as Material).dispose();
     }
 }

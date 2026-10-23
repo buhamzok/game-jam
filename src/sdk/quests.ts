@@ -45,7 +45,7 @@ function rollDay(): void {
     save(true);
 }
 
-export function publish(): void {
+function publish(): void {
     const d = today();
     const list = questsFor(d).map((q) => ({
         id: q.id,
@@ -78,7 +78,6 @@ export async function loadQuests(): Promise<void> {
 export function questEvent(event: QuestEvent, value = 1): void {
     rollDay();
     let changed = false;
-    let completed = false;
     for (const q of questsFor(state.day)) {
         if (q.event !== event || state.claimed.includes(q.id)) continue;
         const before = state.progress[q.id] ?? 0;
@@ -88,18 +87,13 @@ export function questEvent(event: QuestEvent, value = 1): void {
         state.progress[q.id] = next;
         changed = true;
         if (next >= q.target) {
-            completed = true;
             store.patch({ questToast: { text: q.text, at: Date.now() } });
             telemetry('quest_done', { quest: q.id });
         }
     }
     if (changed) {
         save();
-        // Avoid patching the React store on every kill/dodge mid-fight unless a quest completed or the run ended
-        const s = store.get();
-        if (completed || s.phase !== 'playing' || s.gameOver || event === 'run') {
-            publish();
-        }
+        publish();
     }
 }
 

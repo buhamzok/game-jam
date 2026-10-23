@@ -579,46 +579,32 @@ const COMMON_OVERRIDE: Partial<Record<HunterKind, Partial<{ spawn: AnimSpec; fli
 
 const commonFor = (kind: HunterKind) => ({ ...COMMON, roar: COMMON.spawn, ...(COMMON_OVERRIDE[kind] ?? {}) });
 
-const sliceGeoCache = new Map<number, CircleGeometry>();
 /** Unit pie slice in the XZ plane, pointing along +X, `half` radians each side. */
 function sliceGeometry(half: number): CircleGeometry {
-    const key = Math.round(half * 10000);
-    let g = sliceGeoCache.get(key);
-    if (!g) {
-        g = new CircleGeometry(1, 28, -half, half * 2);
-        g.rotateX(-Math.PI / 2);
-        sliceGeoCache.set(key, g);
-    }
+    const g = new CircleGeometry(1, 28, -half, half * 2);
+    g.rotateX(-Math.PI / 2);
     return g;
 }
 
-const sharedStripGeo = (() => {
+/** Unit strip in the XZ plane from x = 0 to 1, 1 wide in z (scaled to the aim line). */
+function stripGeometry(): PlaneGeometry {
     const g = new PlaneGeometry(1, 1);
     g.rotateX(-Math.PI / 2);
     g.translate(0.5, 0, 0);
     return g;
-})();
+}
 
-const sharedFlatCircleGeo = (() => {
+function flatCircle(): CircleGeometry {
     const g = new CircleGeometry(1, 36);
     g.rotateX(-Math.PI / 2);
     return g;
-})();
+}
 
-const sharedFlatRingGeo = (() => {
+function flatRing(): RingGeometry {
     const g = new RingGeometry(0.92, 1, 48);
     g.rotateX(-Math.PI / 2);
     return g;
-})();
-
-const sharedShieldArcGeo = (() => {
-    const arc = new RingGeometry(0.78, 1, 32, 1, -Math.PI * 0.5, Math.PI);
-    arc.rotateX(-Math.PI / 2);
-    return arc;
-})();
-
-const sharedStarGeo = new SphereGeometry(0.07, 8, 6);
-const sharedEnemyRingGeo = new RingGeometry(0.62, 0.74, 40);
+}
 
 const teleMaterial = () => new MeshBasicMaterial({ transparent: true, depthWrite: false, side: DoubleSide });
 
@@ -661,7 +647,7 @@ export class HunterView {
             this.anims = { ...RIVAL_ANIMS, idle: hero.idle, run: { ...hero.run, speed: (hero.run.speed ?? 1) * rival.runScale } };
             if (rival.skin) this.char.setSkin(rival.skin.tint, rival.skin.amount);
             const ringMat = new MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0.75, blending: AdditiveBlending, depthWrite: false });
-            this.enemyRing = new Mesh(sharedEnemyRingGeo, ringMat);
+            this.enemyRing = new Mesh(new RingGeometry(0.62, 0.74, 40), ringMat);
             this.enemyRing.rotation.x = -Math.PI / 2;
             this.enemyRing.position.y = 0.04;
             this.char.root.add(this.enemyRing);
@@ -673,20 +659,22 @@ export class HunterView {
         this.coneFill = new Mesh(sliceGeometry(0.5), this.fillMat);
         this.coneFill.position.y = 0.005;
         this.cone.add(this.coneFull, this.coneFill);
-        this.lineFull = new Mesh(sharedStripGeo, this.fullMat);
-        this.lineFill = new Mesh(sharedStripGeo, this.fillMat);
+        this.lineFull = new Mesh(stripGeometry(), this.fullMat);
+        this.lineFill = new Mesh(stripGeometry(), this.fillMat);
         this.lineFill.position.y = 0.005;
         this.line.add(this.lineFull, this.lineFill);
-        this.circleEdge = new Mesh(sharedFlatRingGeo, this.fillMat);
-        this.circleFill = new Mesh(sharedFlatCircleGeo, this.fullMat);
+        this.circleEdge = new Mesh(flatRing(), this.fillMat);
+        this.circleFill = new Mesh(flatCircle(), this.fullMat);
         this.circleEdge.position.y = 0.005;
         this.circle.add(this.circleFill, this.circleEdge);
-        this.shield = new Mesh(sharedShieldArcGeo, this.shieldMat);
+        const arc = new RingGeometry(0.78, 1, 32, 1, -Math.PI * 0.5, Math.PI);
+        arc.rotateX(-Math.PI / 2);
+        this.shield = new Mesh(arc, this.shieldMat);
         this.teleRoot.add(this.cone, this.line, this.circle, this.shield);
         this.cone.visible = this.line.visible = this.circle.visible = false;
 
         const starMat = new MeshBasicMaterial({ color: C.counter });
-        for (let i = 0; i < 3; i++) this.stars.add(new Mesh(sharedStarGeo, starMat));
+        for (let i = 0; i < 3; i++) this.stars.add(new Mesh(new SphereGeometry(0.07, 8, 6), starMat));
         this.stars.visible = false;
         this.char.body.add(this.stars);
     }
@@ -834,9 +822,10 @@ export class HunterView {
             const half = (atk.arcDeg / 2) * DEG;
             if (half !== this.teleHalf) {
                 this.teleHalf = half;
-                const sharedSlice = sliceGeometry(half);
-                this.coneFull.geometry = sharedSlice;
-                this.coneFill.geometry = sharedSlice;
+                this.coneFull.geometry.dispose();
+                this.coneFill.geometry.dispose();
+                this.coneFull.geometry = sliceGeometry(half);
+                this.coneFill.geometry = sliceGeometry(half);
             }
             const reach = (atk.range + h.r * 0.5) * U;
             this.cone.position.set(h.x * U, 0.04, h.y * U);
@@ -876,12 +865,15 @@ export class HunterView {
 
     dispose(): void {
         this.teleRoot.removeFromParent();
+        for (const m of [this.coneFull, this.coneFill, this.lineFull, this.lineFill, this.circleEdge, this.circleFill, this.shield]) m.geometry.dispose();
         this.shieldMat.dispose();
         if (this.enemyRing) {
+            this.enemyRing.geometry.dispose();
             (this.enemyRing.material as MeshBasicMaterial).dispose();
         }
         this.fullMat.dispose();
         this.fillMat.dispose();
+        this.stars.children.forEach((s) => (s as Mesh).geometry.dispose());
         ((this.stars.children[0] as Mesh)?.material as MeshBasicMaterial)?.dispose();
         this.char.dispose();
     }

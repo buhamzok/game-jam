@@ -48,7 +48,6 @@ function swirlTexture(): CanvasTexture {
 
 export class PortalView {
     readonly group = new Group();
-    private readonly meshes = new Group();
     private readonly ring: Mesh;
     private readonly core: Mesh;
     private readonly pool: Mesh;
@@ -77,12 +76,10 @@ export class PortalView {
         // face the camera (it looks down from +z), tilted back a little
         stand.rotation.x = -0.35;
         stand.add(this.ring, this.core);
-        this.meshes.add(stand, this.pool);
-        this.meshes.visible = false;
-        // Keep the PointLight visible with intensity 0 when closed so opening a portal never changes scene light count or recompiles shaders
         this.light = new PointLight(0xc084fc, 0, 8, 1.4);
         this.light.position.y = 1.2;
-        this.group.add(this.meshes, this.light);
+        this.group.add(stand, this.pool, this.light);
+        this.group.visible = false;
     }
 
     /** Tint the ring, swirl, pool and light (the equipped portal color). */
@@ -98,12 +95,11 @@ export class PortalView {
     /** `at` in sim units, or null when there is no portal. */
     update(at: { x: number; y: number } | null, realDt: number): void {
         if (!at) {
-            this.meshes.visible = false;
-            this.light.intensity = 0;
+            this.group.visible = false;
             this.grow = 0;
             return;
         }
-        this.meshes.visible = true;
+        this.group.visible = true;
         this.group.position.set(at.x * U, 0, at.y * U);
         this.grow = Math.min(1, this.grow + realDt * 1.5);
         const s = 1 - (1 - this.grow) ** 3;
